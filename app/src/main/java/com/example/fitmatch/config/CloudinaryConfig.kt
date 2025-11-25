@@ -19,7 +19,7 @@ object CloudinaryConfig {
         )
 
         MediaManager.init(context, config)
-        initialized=false;
+        initialized=true;
     }
     fun getCloudName() = cloudName
     fun getUploadPreset() = uploadPreset

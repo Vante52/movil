@@ -10,6 +10,7 @@ import kotlinx.coroutines.flow.Flow
 interface RealtimeDatabaseRepository {
     suspend fun saveProduct(product: Product): String
     fun observeVendorProducts(vendorId: String): Flow<List<Product>>
+    fun observeAllProducts(): Flow<List<Product>>
     suspend fun updateProductStock(vendorId: String, productId: String, newStock: Int)
 
     suspend fun addOrUpdateCartItem(userId: String, item: CartItem)

@@ -10,6 +10,7 @@ import android.os.Parcelable
 import kotlinx.parcelize.Parcelize
 import android.provider.MediaStore
 import android.widget.Toast
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.BorderStroke
@@ -26,7 +27,6 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material3.*
@@ -46,12 +46,14 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.content.FileProvider
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.compose.AsyncImage
 import com.google.accompanist.permissions.ExperimentalPermissionsApi
 import com.google.accompanist.permissions.rememberPermissionState
 import kotlin.collections.minus
 import kotlin.collections.plus
 import com.example.compose.FitMatchTheme
+import com.example.fitmatch.presentation.viewmodel.vendedor.CreateProductViewModel
 import java.io.File
 import com.google.accompanist.permissions.PermissionStatus
 
@@ -94,8 +96,10 @@ fun CreateProductScreen(
     onSaveDraftClick: () -> Unit = {},
     onPublishClick: () -> Unit = {}
 ) {
+    val viewModel: CreateProductViewModel = viewModel()
     val colors = MaterialTheme.colorScheme
     val shapes = MaterialTheme.shapes
+    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
 
 
     var title by rememberSaveable { mutableStateOf("") }
@@ -126,7 +130,22 @@ fun CreateProductScreen(
     )
     val context = LocalContext.current
     // validación simple para publicar
-    val canPublish = title.isNotBlank() && price.isNotBlank() && media.size in 3..10
+    val canPublish = title.isNotBlank() && price.isNotBlank() && media.size in 3..10 && !uiState.isPublishing
+
+    LaunchedEffect(uiState.errorMessage) {
+        uiState.errorMessage?.let {
+            Toast.makeText(context, it, Toast.LENGTH_LONG).show()
+            viewModel.onMessageConsumed()
+        }
+    }
+
+    LaunchedEffect(uiState.isSuccess) {
+        if (uiState.isSuccess) {
+            Toast.makeText(context, "Producto publicado", Toast.LENGTH_SHORT).show()
+            onPublishClick()
+            viewModel.onMessageConsumed()
+        }
+    }
 
 
     if (showMediaScreen) {
@@ -431,11 +450,25 @@ fun CreateProductScreen(
                     Button(
                         onClick = {
                             val videosCount = media.count { it.type == MediaType.VIDEO } // ⬅️ opcional, por limpieza
+                            val priceValue = price.toIntOrNull()
+                            val imageUris = media.filter { it.type == MediaType.IMAGE }.map { Uri.parse(it.uri) }
+                            val tags = labels.split(",").map { it.trim() }.filter { it.isNotEmpty() }
                             when {
                                 media.size < 3 -> Toast.makeText(context, "Mínimo 3 elementos.", Toast.LENGTH_SHORT).show()
                                 media.size > 10 -> Toast.makeText(context, "Máximo 10 elementos.", Toast.LENGTH_SHORT).show()
                                 videosCount > 3 -> Toast.makeText(context, "Máximo 3 videos.", Toast.LENGTH_SHORT).show()
-                                else -> onPublishClick()
+                                media.any { it.type == MediaType.VIDEO } -> Toast.makeText(context, "Por ahora solo se suben imágenes.", Toast.LENGTH_SHORT).show()
+                                priceValue == null -> Toast.makeText(context, "Ingresa un precio válido", Toast.LENGTH_SHORT).show()
+                                imageUris.isEmpty() -> Toast.makeText(context, "Agrega al menos una imagen.", Toast.LENGTH_SHORT).show()
+                                else -> viewModel.publishProduct(
+                                    title = title,
+                                    description = description,
+                                    price = priceValue,
+                                    sizes = selectedSizes.toList(),
+                                    colors = selectedColors.toList(),
+                                    tags = tags,
+                                    mediaUris = imageUris
+                                )
                             }
                         },
                         modifier = Modifier.weight(1f),
@@ -448,6 +481,18 @@ fun CreateProductScreen(
                         ),
                         shape = shapes.large
                     ) {
+                        if (uiState.isPublishing) {
+                            CircularProgressIndicator(
+                                color = colors.onPrimary,
+                                strokeWidth = 2.dp,
+                                modifier = Modifier.size(20.dp)
+                            )
+                        } else {
+                            Text(
+                                text = "Publicar",
+                                style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.Medium)
+                            )
+                        }
                         Text(
                             text = "Publicar",
                             style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.Medium)

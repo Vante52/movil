@@ -10,7 +10,12 @@ import androidx.lifecycle.viewModelScope
 import com.example.fitmatch.presentation.ui.screens.cliente.state.ClienteDashboardUiState
 import com.example.fitmatch.presentation.ui.screens.cliente.state.ProductCardState
 import com.example.fitmatch.presentation.ui.screens.cliente.state.SwipeAction
+import com.example.fitmatch.data.realtimedb.FirebaseRealtimeDatabaseRepository
+import com.example.fitmatch.data.realtimedb.RealtimeDatabaseRepository
+import com.example.fitmatch.model.product.Product
+
 import com.example.fitmatch.presentation.ui.screens.cliente.state.SwipeActionHistory
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -22,7 +27,8 @@ import kotlinx.coroutines.flow.receiveAsFlow
 
 
 class ClienteDashboardViewModel(
-    private val context: Context
+    private val context: Context,
+    private val realtimeRepo: RealtimeDatabaseRepository = FirebaseRealtimeDatabaseRepository()
 ) : ViewModel(), SensorEventListener {
 
     private val _uiState = MutableStateFlow(ClienteDashboardUiState())
@@ -41,6 +47,7 @@ class ClienteDashboardViewModel(
     // Control de debounce para el sensor
     private var lastTiltActionTime = 0L
     private val tiltDebounceMs = 1000L // 1 segundo entre acciones
+    private var loadJob: Job? = null
 
     init {
         loadProducts()
@@ -229,49 +236,48 @@ class ClienteDashboardViewModel(
     }
 
     private fun loadProducts() {
-        viewModelScope.launch {
-            _uiState.update { it.copy(isLoading = true) }
+        loadJob?.cancel()
+        loadJob = viewModelScope.launch {
+            _uiState.update { it.copy(isLoading = true, errorMessage = null) }
 
-            // TODO: Llamar al repositorio real
-            delay(500)
+            try {
+                realtimeRepo.observeAllProducts().collect { products ->
+                    val productCards = products
+                        .filter { it.isActive && it.stock > 0 }
+                        .map { it.toCardState() }
 
-            val mockProducts = listOf(
-                ProductCardState(
-                    "p1", "Blazer Premium en Lino", "Atelier Nova", 189900,
-                    tags = listOf("Formal", "Oficina", "Lino"),
-                    category = "Abrigos", size = "M", color = "Beige"
-                ),
-                ProductCardState(
-                    "p2", "Pantalón Wide Leg", "Luna Urban", 129900,
-                    tags = listOf("Casual", "Comfort", "Algodón"),
-                    category = "Pantalones", size = "38", color = "Negro"
-                ),
-                ProductCardState(
-                    "p3", "Camisa Oversize", "Forastera", 99900,
-                    tags = listOf("Street", "Oversize", "Algodón"),
-                    category = "Camisas", size = "L", color = "Blanco"
-                ),
-                ProductCardState(
-                    "p4", "Chaqueta Denim Vintage", "Retro Club", 159900,
-                    tags = listOf("Vintage", "Denim", "Otoño"),
-                    category = "Chaquetas", size = "S", color = "Azul"
-                ),
-                ProductCardState(
-                    "p5", "Vestido Midi Floral", "Marea", 139900,
-                    tags = listOf("Primavera", "Floral", "Elegante"),
-                    category = "Vestidos", size = "XS", color = "Rosa"
-                )
-            )
-
-            _uiState.update {
-                it.copy(
-                    isLoading = false,
-                    productDeck = mockProducts,
-                    currentProduct = mockProducts.lastOrNull()
-                )
+                    _uiState.update {
+                        it.copy(
+                            isLoading = false,
+                            productDeck = productCards,
+                            currentProduct = productCards.lastOrNull()
+                        )
+                    }
+                }
+            } catch (e: Exception) {
+                _uiState.update {
+                    it.copy(
+                        isLoading = false,
+                        errorMessage = e.message ?: "Error al cargar productos"
+                    )
+                }
             }
         }
     }
+
+    private fun Product.toCardState(): ProductCardState = ProductCardState(
+        id = id,
+        title = title,
+        brand = brand,
+        price = price,
+        imageUrl = imageUrls.firstOrNull().orEmpty(),
+        category = category,
+        size = sizes.firstOrNull().orEmpty(),
+        color = color,
+        tags = tags,
+        storeUrl = ""
+    )
+
 
     /* Implementar despues
     //activar sensor temperatura

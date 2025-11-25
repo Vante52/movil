@@ -56,7 +56,24 @@ class FirebaseRealtimeDatabaseRepository(
         ref.addValueEventListener(listener)
         awaitClose { ref.removeEventListener(listener) }
     }
+    override fun observeAllProducts(): Flow<List<Product>> = callbackFlow {
+        val listener = object : ValueEventListener {
+            override fun onDataChange(snapshot: DataSnapshot) {
+                val products = snapshot.children
+                    .flatMap { vendorSnapshot ->
+                        vendorSnapshot.children.mapNotNull { it.getValue(Product::class.java) }
+                    }
+                trySend(products)
+            }
 
+            override fun onCancelled(error: DatabaseError) {
+                close(error.toException())
+            }
+        }
+
+        productsRef.addValueEventListener(listener)
+        awaitClose { productsRef.removeEventListener(listener) }
+    }
     override suspend fun updateProductStock(vendorId: String, productId: String, newStock: Int) {
         productsRef.child(vendorId).child(productId).child("stock").setValue(newStock).await()
     }
