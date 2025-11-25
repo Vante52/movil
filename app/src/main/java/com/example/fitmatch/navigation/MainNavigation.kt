@@ -1,4 +1,4 @@
-package com.example.fitmatch.presentation.navigation
+package com.example.fitmatch.navigation
 
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons

@@ -105,5 +105,7 @@ dependencies {
     implementation("androidx.media3:media3-ui:1.4.1")
     // build.gradle (Module: app)
     implementation("com.cloudinary:cloudinary-android:3.0.2")
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-play-services:1.9.0")
+
     implementation(libs.firebase.realtime)
 }

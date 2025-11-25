@@ -7,7 +7,10 @@ import com.example.fitmatch.R
 object CloudinaryConfig {
     private var cloudName: String = ""
     private var uploadPreset: String = ""
+    private var initialized = false
+
     fun initialize(context: Context) {
+        if (initialized) return
         cloudName = context.getString(R.string.cloudinary_cloud_name)
         uploadPreset = context.getString(R.string.cloudinary_upload_preset)
 
@@ -16,6 +19,7 @@ object CloudinaryConfig {
         )
 
         MediaManager.init(context, config)
+        initialized=false;
     }
     fun getCloudName() = cloudName
     fun getUploadPreset() = uploadPreset

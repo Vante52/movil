@@ -1,4 +1,4 @@
-package com.example.fitmatch.presentation.navigation
+package com.example.fitmatch.navigation
 
 sealed class AppScreens (val route: String) {
     object Welcome : AppScreens("welcome")

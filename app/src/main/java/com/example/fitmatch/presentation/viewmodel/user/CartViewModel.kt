@@ -2,69 +2,63 @@ package com.example.fitmatch.presentation.viewmodel.user
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.fitmatch.data.realtimedb.FirebaseRealtimeDatabaseRepository
+import com.example.fitmatch.data.realtimedb.RealtimeDatabaseRepository
+import com.example.fitmatch.model.order.CartItem
+import com.example.fitmatch.model.product.Product
 import com.example.fitmatch.presentation.ui.screens.cliente.state.CartItemState
 import com.example.fitmatch.presentation.ui.screens.cliente.state.CartUiState
+import com.google.firebase.auth.FirebaseAuth
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.delay
 
-class CartViewModel : ViewModel() {
+class CartViewModel(
+    private val realtimeRepo: RealtimeDatabaseRepository = FirebaseRealtimeDatabaseRepository(),
+    private val auth: FirebaseAuth = FirebaseAuth.getInstance()
+) : ViewModel() {
 
-    //estados de la pantalla
+    // Estados de la pantalla
     private val _uiState = MutableStateFlow(CartUiState())
     val uiState: StateFlow<CartUiState> = _uiState.asStateFlow()
 
     init {
-        // Cargar items del carrito (mock inicial o desde repositorio)
-        loadCartItems()
+        observeCartItems()
     }
 
-    //Eventos (updates)
+    // -----------------------------
+    // Eventos (updates)
+    // -----------------------------
 
-    //sumar item
+    // Sumar item
     fun onIncreaseQuantity(itemId: String) {
-        _uiState.update { currentState ->
-            currentState.copy(
-                items = currentState.items.map { item ->
-                    if (item.id == itemId) item.copy(quantity = item.quantity + 1)
-                    else item
-                }
-            )
-        }
+        updateRemoteQuantity(itemId) { it + 1 }
     }
 
-    //quitar item
+    // Restar item
     fun onDecreaseQuantity(itemId: String) {
-        _uiState.update { currentState ->
-            currentState.copy(
-                items = currentState.items.map { item ->
-                    if (item.id == itemId && item.quantity > 1) {
-                        item.copy(quantity = item.quantity - 1)
-                    } else item
-                }
-            )
+        updateRemoteQuantity(itemId) { quantity ->
+            if (quantity > 1) quantity - 1 else quantity
         }
     }
 
-    //eliminar cosas del carro
+    // Eliminar item del carrito
     fun onRemoveItem(itemId: String) {
-        _uiState.update { currentState ->
-            currentState.copy(
-                items = currentState.items.filter { it.id != itemId },
-                errorMessage = null
-            )
+        val userId = auth.currentUser?.uid ?: return
+        viewModelScope.launch {
+            realtimeRepo.removeCartItem(userId, itemId)
         }
     }
 
-    //el campo del cupon
+    // Campo del cupón
     fun onCouponCodeChanged(code: String) {
         _uiState.update { it.copy(couponCode = code) }
     }
 
-    //cupones de descuento jaja
+    // Aplicar cupón de descuento
     fun onApplyCoupon() {
         viewModelScope.launch {
             val currentCoupon = _uiState.value.couponCode.trim()
@@ -81,84 +75,164 @@ class CartViewModel : ViewModel() {
             // TODO: Llamada real al repositorio para validar cupón
             delay(800)
 
-            // Simulación: cupones válidos
-            val discount = when (currentCoupon.uppercase()) {
-                "WELCOME20" -> 20_000
-                "SAVE10" -> 10_000
-                "FLASH50" -> 50_000
-                else -> 0
+            val subtotal = _uiState.value.subtotal
+
+            // Ejemplo simple: cupón FIT10 = 10% de descuento
+            val discount = if (currentCoupon.equals("FIT10", ignoreCase = true)) {
+                (subtotal * 0.1).toInt()
+            } else {
+                0
+            }
+
+            if (discount == 0) {
+                _uiState.update {
+                    it.copy(
+                        isLoading = false,
+                        errorMessage = "Cupón inválido o sin descuento"
+                    )
+                }
+                return@launch
             }
 
             _uiState.update {
                 it.copy(
                     isLoading = false,
                     appliedDiscount = discount,
-                    errorMessage = if (discount == 0)
-                        "Cupón no válido o expirado"
-                    else null
+                    errorMessage = null
                 )
             }
         }
     }
 
-    //procesar checkout ir a pantalla de pago
+    // Checkout (botón "TRAMITAR PEDIDO")
     fun onCheckout(onSuccess: () -> Unit) {
-        viewModelScope.launch {
-            if (_uiState.value.isEmpty) {
-                _uiState.update {
-                    it.copy(errorMessage = "El carrito está vacío")
-                }
-                return@launch
-            }
-
+        val userId = auth.currentUser?.uid
+        if (userId == null) {
             _uiState.update {
-                it.copy(isProcessingCheckout = true, errorMessage = null)
+                it.copy(errorMessage = "Inicia sesión para completar tu compra")
             }
+            return
+        }
 
-            // TODO: Llamada al repositorio para crear orden
-            delay(1000)
+        if (_uiState.value.items.isEmpty()) {
+            _uiState.update {
+                it.copy(errorMessage = "Tu carrito está vacío")
+            }
+            return
+        }
 
+        viewModelScope.launch {
             _uiState.update {
                 it.copy(
-                    isProcessingCheckout = false,
-                    checkoutSuccess = true
+                    isProcessingCheckout = true,
+                    errorMessage = null
                 )
             }
 
-            onSuccess()
+            try {
+                // TODO: aquí va la llamada real para crear la orden en Realtime DB
+                delay(1000)
+
+                _uiState.update {
+                    it.copy(
+                        isProcessingCheckout = false,
+                        checkoutSuccess = true
+                        // Podrías limpiar el carrito en UI si quieres
+                        // items = emptyList()
+                    )
+                }
+
+                // Avisar a la UI (navegar a pantalla de éxito, etc.)
+                onSuccess()
+            } catch (e: Exception) {
+                _uiState.update {
+                    it.copy(
+                        isProcessingCheckout = false,
+                        errorMessage = e.message ?: "Ocurrió un error al procesar el pedido"
+                    )
+                }
+            }
         }
     }
 
-    //limpiar mensaje error
+    // Limpiar mensaje de error
     fun onDismissError() {
         _uiState.update { it.copy(errorMessage = null) }
     }
 
-//TODO: cargar los items desde el repository al carrito
-    private fun loadCartItems() {
-        _uiState.update {
-            it.copy(
-                items = listOf(
-                    CartItemState(
-                        id = "1",
-                        title = "Blazer Premium en Lino",
-                        shop = "@ateliernova",
-                        price = 189_900,
-                        size = "M",
-                        color = "Negro",
-                        quantity = 1
-                    ),
-                    CartItemState(
-                        id = "2",
-                        title = "Pantalón Wide Leg",
-                        shop = "@lunaurban",
-                        price = 129_900,
-                        size = "S",
-                        color = "Beige",
-                        quantity = 2
+    // -----------------------------
+    // Observación del carrito
+    // -----------------------------
+
+    private fun observeCartItems() {
+        val userId = auth.currentUser?.uid ?: return
+        viewModelScope.launch {
+            realtimeRepo.observeCart(userId).collect { items ->
+                _uiState.update { state ->
+                    state.copy(
+                        items = items.map { it.toUiState() },
+                        isLoading = false,
+                        errorMessage = null
                     )
-                )
-            )
+                }
+            }
         }
     }
+
+    // -----------------------------
+    // Helpers
+    // -----------------------------
+
+    private fun updateRemoteQuantity(itemId: String, update: (Int) -> Int) {
+        val currentItem = _uiState.value.items.firstOrNull { it.id == itemId } ?: return
+        val newQuantity = update(currentItem.quantity)
+        val userId = auth.currentUser?.uid ?: return
+
+        viewModelScope.launch {
+            realtimeRepo.updateCartItemQuantity(userId, itemId, newQuantity)
+        }
+    }
+
+    fun addToCart(
+        product: Product,
+        vendorName: String,
+        size: String,
+        color: String,
+        quantity: Int = 1
+    ) {
+        val userId = auth.currentUser?.uid
+        if (userId == null) {
+            _uiState.update {
+                it.copy(errorMessage = "Inicia sesión para agregar productos al carrito")
+            }
+            return
+        }
+
+        val cartItem = CartItem(
+            userId = userId,
+            productId = product.id,
+            vendorId = product.vendorId,
+            vendorName = vendorName,
+            productTitle = product.title,
+            productImageUrl = product.imageUrls.firstOrNull().orEmpty(),
+            price = product.price,
+            quantity = quantity,
+            size = size,
+            color = color
+        )
+
+        viewModelScope.launch {
+            realtimeRepo.addOrUpdateCartItem(userId, cartItem)
+        }
+    }
+
+    private fun CartItem.toUiState() = CartItemState(
+        id = id,
+        title = productTitle.ifBlank { "Producto" },
+        shop = vendorName.ifBlank { "@vendedor" },
+        price = price,
+        size = size,
+        color = color,
+        quantity = quantity
+    )
 }
