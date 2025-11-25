@@ -58,7 +58,6 @@ dependencies {
     implementation(libs.androidx.compose.material)
     implementation(libs.androidx.runtime.saveable)
     implementation(libs.androidx.compose.foundation)
-    implementation(libs.androidx.compose.ui)
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
@@ -101,12 +100,10 @@ dependencies {
 
     implementation("com.google.accompanist:accompanist-permissions:0.36.0")
     implementation("androidx.compose.material3:material3:1.4.0")
-    implementation("io.coil-kt.coil3:coil-network-okhttp:3.3.0")
+    implementation("io.coil-kt.coil3:coil-network-okhttp:3.1.0")
     implementation("androidx.media3:media3-exoplayer:1.4.1")
     implementation("androidx.media3:media3-ui:1.4.1")
     // build.gradle (Module: app)
     implementation("com.cloudinary:cloudinary-android:3.0.2")
-    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-play-services:1.9.0")
-
     implementation(libs.firebase.realtime)
 }
