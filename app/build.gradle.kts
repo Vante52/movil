@@ -96,7 +96,7 @@ dependencies {
     implementation("com.google.android.libraries.identity.googleid:googleid")
 
     // Google Sign-In
-    implementation("com.google.android.gms:play-services-auth")
+    implementation("com.google.android.gms:play-services-auth:21.4.0")
 
     implementation("com.google.accompanist:accompanist-permissions:0.36.0")
     implementation("androidx.compose.material3:material3:1.4.0")

@@ -1,7 +1,6 @@
 package com.example.fitmatch.presentation.ui.screens.cliente
 
 import android.util.Log
-import coil.compose.SubcomposeAsyncImageContent
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.*
 import androidx.compose.animation.fadeIn
@@ -27,7 +26,6 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
@@ -42,10 +40,6 @@ import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
-import coil.compose.AsyncImage
-import coil.compose.SubcomposeAsyncImage
-import coil3.request.ImageRequest
-import coil3.request.crossfade
 import com.example.fitmatch.presentation.ui.screens.cliente.state.ProductCardState
 import com.example.fitmatch.presentation.viewmodel.user.ClienteDashboardViewModel
 import com.example.fitmatch.presentation.viewmodel.user.DashboardEvent
@@ -483,34 +477,44 @@ private fun SwipeableProductCard(
         border = BorderStroke(1.dp, colors.outline.copy(alpha = 0.15f))
     ) {
         Box(modifier = Modifier.fillMaxSize()) {
-            if (product.imageUrl.isNotBlank()) {
-                SubcomposeAsyncImage(
-                    model = ImageRequest.Builder(LocalContext.current)
-                        .data(product.imageUrl)
-                        .crossfade(true)
-                        .build(),
-                    contentDescription = product.title,
-                    modifier = Modifier.fillMaxSize(),
-                    contentScale = ContentScale.Crop,
-                    loading = {
-                        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                            CircularProgressIndicator(color = colors.onSurface.copy(alpha = 0.4f))
-                        }
-                    },
-                    error = {
-                        ProductImagePlaceholder(colors = colors, modifier = Modifier.fillMaxSize())
-                    }
+            // Imagen / placeholder con gradiente
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(
+                        Brush.verticalGradient(
+                            colors = listOf(
+                                colors.surfaceVariant,
+                                colors.surface
+                            ),
+                            startY = 0f,
+                            endY = Float.POSITIVE_INFINITY
+                        )
+                    ),
+                contentAlignment = Alignment.Center
+            ) {
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.Center
                 ) {
-                    SubcomposeAsyncImageContent()
+                    Icon(
+                        Icons.Filled.ShoppingBag,
+                        contentDescription = null,
+                        tint = colors.onSurfaceVariant,
+                        modifier = Modifier.size(80.dp)
+                    )
+                    Text(
+                        "Imagen del producto",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = colors.onSurfaceVariant,
+                        modifier = Modifier.padding(top = 12.dp)
+                    )
                 }
-            } else {
-                ProductImagePlaceholder(colors = colors, modifier = Modifier.fillMaxSize())
             }
 
             // Gradiente inferior para texto legible
             Box(
                 modifier = Modifier
-
                     .fillMaxWidth()
                     .align(Alignment.BottomCenter)
                     .height(200.dp)
@@ -611,42 +615,6 @@ private fun SwipeableProductCard(
                 modifier = Modifier
                     .align(Alignment.TopEnd)
                     .padding(24.dp)
-            )
-        }
-    }
-}
-
-@Composable
-private fun ProductImagePlaceholder(colors: ColorScheme, modifier: Modifier = Modifier) {
-    Box(
-        modifier = modifier
-            .background(
-                Brush.verticalGradient(
-                    colors = listOf(
-                        colors.surfaceVariant,
-                        colors.surface
-                    ),
-                    startY = 0f,
-                    endY = Float.POSITIVE_INFINITY
-                )
-            ),
-        contentAlignment = Alignment.Center
-    ) {
-        Column(
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Center
-        ) {
-            Icon(
-                Icons.Filled.ShoppingBag,
-                contentDescription = null,
-                tint = colors.onSurfaceVariant,
-                modifier = Modifier.size(80.dp)
-            )
-            Text(
-                "Imagen del producto",
-                style = MaterialTheme.typography.bodyMedium,
-                color = colors.onSurfaceVariant,
-                modifier = Modifier.padding(top = 12.dp)
             )
         }
     }
