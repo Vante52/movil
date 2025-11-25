@@ -26,34 +26,30 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.compose.FitMatchTheme
 import com.example.fitmatch.R
+import com.example.fitmatch.presentation.ui.screens.auth.state.RegisterUiState
+import com.example.fitmatch.presentation.viewmodel.login.RegisterViewModel
+
+//pantalla de registro en donde el viewmodel maneja to do el estado
+//recibe el rol para navegar correctamente
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun RegisterScreen(
     onBackClick: () -> Unit = {},
-    onRegisterClick: () -> Unit = {},
-    onRoleClick: (String) -> Unit= {}
+    onRegisterSuccess: (role: String) -> Unit = {},
+    viewModel: RegisterViewModel = viewModel()
 ) {
     val colors = MaterialTheme.colorScheme
+    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
 
     // si esto va a ViewModel, levantar a estado de VM
     var email by remember { mutableStateOf("") }
-    var password by remember { mutableStateOf("") }
-    var fullName by remember { mutableStateOf("") }
-    var birthDate by remember { mutableStateOf("") }
-    var city by remember { mutableStateOf("Bogotá, Colombia") }
-    var selectedGender by remember { mutableStateOf("") }
     var selectedRole by remember { mutableStateOf("") }
 
-    var isGenderDropdownExpanded by remember { mutableStateOf(false) }
-    var isRoleDropdownExpanded by remember { mutableStateOf(false) } // reservado si cambio a dropdown
-
-    val showPassword = remember { mutableStateOf(false) } // botoncito ojo
-
-    val genderOptions = listOf("Masculino", "Femenino", "Otro", "Prefiero no decir")
-    val roleOptions = listOf("Comprador", "Vendedor")
     val scroll = rememberScrollState()
 
     Scaffold(
@@ -124,12 +120,12 @@ fun RegisterScreen(
 
             Spacer(modifier = Modifier.height(24.dp))
 
-            // Email / Teléfono
+            // Email
             OutlinedTextField(
-                value = email,
-                onValueChange = { email = it },
-                label = { Text("Email o Teléfono") },
-                placeholder = { Text("ejemplo@email.com o +57 300 123 4567") },
+                value = uiState.email,
+                onValueChange = { viewModel.onEmailChanged(it) },
+                label = { Text("Email") },
+                placeholder = { Text("ejemplo@email.com") },
                 modifier = Modifier.fillMaxWidth(),
                 colors = OutlinedTextFieldDefaults.colors(
                     focusedBorderColor = colors.primary,
@@ -142,15 +138,16 @@ fun RegisterScreen(
                     unfocusedTextColor = colors.onSurface
                 ),
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
-                singleLine = true
+                singleLine = true,
+                enabled = !uiState.isLoading
             )
 
             Spacer(modifier = Modifier.height(16.dp))
 
             // Contraseña
             OutlinedTextField(
-                value = password,
-                onValueChange = { password = it },
+                value = uiState.password,
+                onValueChange = { viewModel.onPasswordChanged(it) },
                 label = { Text("Contraseña") },
                 placeholder = { Text("Mínimo 8 caracteres") },
                 modifier = Modifier.fillMaxWidth(),
@@ -165,25 +162,35 @@ fun RegisterScreen(
                     unfocusedTextColor = colors.onSurface
                 ),
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
-                visualTransformation = if (showPassword.value) VisualTransformation.None else PasswordVisualTransformation(),
+                visualTransformation = if (uiState.showPassword)
+                    VisualTransformation.None
+                else
+                    PasswordVisualTransformation(),
                 trailingIcon = {
-                    IconButton(onClick = { showPassword.value = !showPassword.value }) {
+                    IconButton(onClick = { viewModel.onTogglePasswordVisibility() }) {
                         Icon(
-                            imageVector = if (showPassword.value) Icons.Filled.VisibilityOff else Icons.Filled.Visibility,
-                            contentDescription = if (showPassword.value) "Ocultar contraseña" else "Mostrar contraseña",
+                            imageVector = if (uiState.showPassword)
+                                Icons.Filled.VisibilityOff
+                            else
+                                Icons.Filled.Visibility,
+                            contentDescription = if (uiState.showPassword)
+                                "Ocultar contraseña"
+                            else
+                                "Mostrar contraseña",
                             tint = colors.primary
                         )
                     }
                 },
-                singleLine = true
+                singleLine = true,
+                enabled = !uiState.isLoading
             )
 
             Spacer(modifier = Modifier.height(16.dp))
 
             // Nombre Completo
             OutlinedTextField(
-                value = fullName,
-                onValueChange = { fullName = it },
+                value = uiState.fullName,
+                onValueChange = { viewModel.onFullNameChanged(it) },
                 label = { Text("Nombre Completo") },
                 placeholder = { Text("Tu nombre completo") },
                 modifier = Modifier.fillMaxWidth(),
@@ -197,15 +204,39 @@ fun RegisterScreen(
                     focusedTextColor = colors.onSurface,
                     unfocusedTextColor = colors.onSurface
                 ),
-                singleLine = true
+                singleLine = true,
+                enabled = !uiState.isLoading
+            )
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // Numero de telefono
+            OutlinedTextField(
+                value = uiState.phone,
+                onValueChange = { viewModel.onPhoneChanged(it) },
+                label = { Text("Numero de teléfono") },
+                placeholder = { Text("Tu numero de telefono") },
+                modifier = Modifier.fillMaxWidth(),
+                colors = OutlinedTextFieldDefaults.colors(
+                    focusedBorderColor = colors.primary,
+                    unfocusedBorderColor = colors.outline,
+                    cursorColor = colors.primary,
+                    focusedContainerColor = colors.surface,
+                    unfocusedContainerColor = colors.surface,
+                    focusedLabelColor = colors.primary,
+                    focusedTextColor = colors.onSurface,
+                    unfocusedTextColor = colors.onSurface
+                ),
+                singleLine = true,
+                enabled = !uiState.isLoading
             )
 
             Spacer(modifier = Modifier.height(16.dp))
 
             // Fecha de Nacimiento
             OutlinedTextField(
-                value = birthDate,
-                onValueChange = { birthDate = it },
+                value = uiState.birthDate,
+                onValueChange = { viewModel.onBirthDateChanged(it) },
                 label = { Text("Fecha de Nacimiento") },
                 placeholder = { Text("dd / mm / aaaa") },
                 modifier = Modifier.fillMaxWidth(),
@@ -219,15 +250,16 @@ fun RegisterScreen(
                     focusedTextColor = colors.onSurface,
                     unfocusedTextColor = colors.onSurface
                 ),
-                singleLine = true
+                singleLine = true,
+                enabled = !uiState.isLoading
             )
 
             Spacer(modifier = Modifier.height(16.dp))
 
             // Ciudad
             OutlinedTextField(
-                value = city,
-                onValueChange = { city = it },
+                value = uiState.city,
+                onValueChange = { viewModel.onCityChanged(it) },
                 label = { Text("Ciudad") },
                 modifier = Modifier.fillMaxWidth(),
                 colors = OutlinedTextFieldDefaults.colors(
@@ -240,21 +272,26 @@ fun RegisterScreen(
                     focusedTextColor = colors.onSurface,
                     unfocusedTextColor = colors.onSurface
                 ),
-                singleLine = true
+                singleLine = true,
+                enabled = !uiState.isLoading
             )
 
             Spacer(modifier = Modifier.height(16.dp))
 
             // Género (ExposedDropdown)
             ExposedDropdownMenuBox(
-                expanded = isGenderDropdownExpanded,
-                onExpandedChange = { isGenderDropdownExpanded = !isGenderDropdownExpanded }
+                expanded = uiState.isGenderDropdownExpanded,
+                onExpandedChange = {
+                    if (!uiState.isLoading) {
+                        viewModel.onGenderDropdownToggle()
+                    }
+                }
             ) {
                 OutlinedTextField(
-                    value = selectedGender,
+                    value = uiState.selectedGender,
                     onValueChange = {},
                     readOnly = true,
-                    label = { Text("Género (Opcional)") },
+                    label = { Text("Género") },
                     placeholder = { Text("Seleccionar") },
                     trailingIcon = {
                         Icon(
@@ -265,7 +302,7 @@ fun RegisterScreen(
                     },
                     modifier = Modifier
                         .fillMaxWidth()
-                        .menuAnchor(MenuAnchorType.PrimaryNotEditable, enabled = true),
+                        .menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable, enabled = true),
                     colors = OutlinedTextFieldDefaults.colors(
                         focusedBorderColor = colors.primary,
                         unfocusedBorderColor = colors.outline,
@@ -276,19 +313,17 @@ fun RegisterScreen(
                         focusedTextColor = colors.onSurface,
                         unfocusedTextColor = colors.onSurface
                     ),
-                    singleLine = true
+                    singleLine = true,
+                    enabled = !uiState.isLoading
                 )
                 ExposedDropdownMenu(
-                    expanded = isGenderDropdownExpanded,
-                    onDismissRequest = { isGenderDropdownExpanded = false }
+                    expanded = uiState.isGenderDropdownExpanded,
+                    onDismissRequest = { viewModel.onGenderDropdownToggle() }
                 ) {
-                    genderOptions.forEach { option ->
+                    RegisterUiState.GENDER_OPTIONS.forEach { option ->
                         DropdownMenuItem(
                             text = { Text(option) },
-                            onClick = {
-                                selectedGender = option
-                                isGenderDropdownExpanded = false
-                            }
+                            onClick = { viewModel.onGenderSelected(option) }
                         )
                     }
                 }
@@ -310,12 +345,13 @@ fun RegisterScreen(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                roleOptions.forEach { role ->
+                RegisterUiState.ROLE_OPTIONS.forEach { role ->
                     FilterChip(
-                        selected = selectedRole == role,
+                        selected = uiState.selectedRole == role,
                         onClick = {
-                            selectedRole = role           // ← actualiza estado local
-                            onRoleClick(role)             // ← por si lo quieres escuchar arriba
+                            if (!uiState.isLoading) {
+                                viewModel.onRoleSelected(role)
+                            }
                         },
                         label = { Text(role) },
                         colors = FilterChipDefaults.filterChipColors(
@@ -330,9 +366,20 @@ fun RegisterScreen(
                             borderColor = colors.outline,
                             selectedBorderColor = colors.primary
                         ),
-                        shape = RoundedCornerShape(20.dp)
+                        shape = RoundedCornerShape(20.dp),
+                        enabled = !uiState.isLoading
                     )
                 }
+            }
+            if (uiState.errorMessage != null) {
+                Spacer(modifier = Modifier.height(16.dp))
+                Text(
+                    text = uiState.errorMessage!!,
+                    color = colors.error,
+                    style = MaterialTheme.typography.bodySmall,
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.fillMaxWidth()
+                )
             }
 
             Spacer(modifier = Modifier.height(24.dp))
@@ -362,25 +409,33 @@ fun RegisterScreen(
             // Botón Registrarse
             Button(
                 onClick = {
-                    val role = if (selectedRole.isBlank()) "Cliente" else selectedRole
-                    onRegisterClick() // si necesitas hacer algo antes
-                    // ← navega directo con la ruta helper
-                    // (si navegas desde arriba, puedes mover esto a MainNavigation)
+                    viewModel.onRegisterClick(onSuccess = onRegisterSuccess)
                 },
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(50.dp),
                 colors = ButtonDefaults.buttonColors(
-                    containerColor = colors.primary
+                    containerColor = colors.primary,
+                    disabledContainerColor = colors.surfaceVariant,
+                    disabledContentColor = colors.onSurfaceVariant
                 ),
-                shape = RoundedCornerShape(25.dp)
+                shape = RoundedCornerShape(25.dp),
+                enabled = uiState.isRegisterEnabled && !uiState.isLoading
             ) {
-                Text(
-                    text = "Registrarse",
-                    color = colors.onPrimary,
-                    fontSize = 16.sp,
-                    fontWeight = FontWeight.Medium
-                )
+                if (uiState.isLoading) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(24.dp),
+                        color = colors.onPrimary,
+                        strokeWidth = 2.dp
+                    )
+                } else {
+                    Text(
+                        text = "Registrarse",
+                        color = colors.onPrimary,
+                        fontSize = 16.sp,
+                        fontWeight = FontWeight.Medium
+                    )
+                }
             }
         }
     }

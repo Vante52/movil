@@ -1,0 +1,48 @@
+{
+  "project_info": {
+    "project_number": "237240982581",
+    "firebase_url": "https://fitmatch-cf277-default-rtdb.firebaseio.com",
+    "project_id": "fitmatch-cf277",
+    "storage_bucket": "fitmatch-cf277.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:237240982581:android:978fa1ce61b5b8ff86e57c",
+        "android_client_info": {
+          "package_name": "com.example.fitmatch"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "237240982581-d14b1e4d4p8e6dpivaag5q7ll076vpar.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.example.fitmatch",
+            "certificate_hash": "8ab9ef537b2269b562a73793fd35af7c7cd8a24f"
+          }
+        },
+        {
+          "client_id": "237240982581-kk64imtajpi4nc4anc63o8p90ksntj5t.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyALQdRtE6OVjx0HoO-qJhWtHdpflBm4eSY"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "237240982581-kk64imtajpi4nc4anc63o8p90ksntj5t.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

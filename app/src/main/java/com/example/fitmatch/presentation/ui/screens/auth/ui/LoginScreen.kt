@@ -1,21 +1,18 @@
 package com.example.fitmatch.presentation.ui.screens.auth.ui
 
-import androidx.compose.runtime.remember
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.setValue
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.ContentScale
@@ -25,29 +22,29 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.compose.FitMatchTheme
 import com.example.fitmatch.R
+import com.example.fitmatch.presentation.viewmodel.login.LoginViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun LoginScreen(
-    state: LoginUiState,
-    snackbarHostState: SnackbarHostState,
-    onBackClick: () -> Unit,
-    onForgotPasswordClick: () -> Unit,
-    onEmailChange: (String) -> Unit,
-    onPasswordChange: (String) -> Unit,
-    onTogglePassword: () -> Unit,
-    onSubmit: () -> Unit
+    onBackClick: () -> Unit = {},
+    onLoginSuccess: () -> Unit = {},
+    onForgotPasswordClick: () -> Unit = {},
+    viewModel: LoginViewModel = viewModel()
 ) {
-    var userIsAuthenticated by remember { mutableStateOf(false) }
-    var appJustLaunched by remember { mutableStateOf(true) }
     val colors = MaterialTheme.colorScheme
+    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val scrollState = rememberScrollState()
 
     Scaffold(
         containerColor = colors.background,
-        snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
             Surface(
                 modifier = Modifier.fillMaxWidth(),
@@ -56,7 +53,9 @@ fun LoginScreen(
                 shadowElevation = 1.dp
             ) {
                 Box(
-                    Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 14.dp)
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 14.dp)
                 ) {
                     IconButton(
                         onClick = onBackClick,
@@ -68,6 +67,7 @@ fun LoginScreen(
                             tint = colors.onSurface
                         )
                     }
+
                     Text(
                         text = "Iniciar sesión",
                         style = MaterialTheme.typography.titleLarge.copy(
@@ -87,22 +87,31 @@ fun LoginScreen(
                 .fillMaxSize()
                 .background(colors.background)
                 .padding(inner)
-                .padding(24.dp),
+                .verticalScroll(scrollState)
+                .padding(24.dp)
+                .imePadding(), // ← Importante para el teclado
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
+            // Texto de apoyo
             Text(
                 text = "Ingresa a tu cuenta y encuentra nuevas ofertas",
                 style = MaterialTheme.typography.bodyMedium.copy(color = colors.onSurfaceVariant),
                 textAlign = TextAlign.Center
             )
 
-            Spacer(Modifier.height(32.dp))
+            Spacer(Modifier.height(24.dp))
 
+            /* ------------------------ Email / Teléfono ------------------------ */
             OutlinedTextField(
-                value = state.emailOrPhone,
-                onValueChange = onEmailChange,
+                value = uiState.email,
+                onValueChange = { viewModel.onEmailOrPhoneChanged(it) },
                 label = { Text("Introduce tu cuenta") },
-                placeholder = { Text("Correo o número de teléfono", color = colors.onSurfaceVariant) },
+                placeholder = {
+                    Text(
+                        "Correo o número de teléfono",
+                        color = colors.onSurfaceVariant
+                    )
+                },
                 modifier = Modifier.fillMaxWidth(),
                 singleLine = true,
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
@@ -116,25 +125,36 @@ fun LoginScreen(
                     focusedContainerColor = colors.surface,
                     unfocusedContainerColor = colors.surface
                 ),
-                shape = MaterialTheme.shapes.medium
+                shape = MaterialTheme.shapes.medium,
+                enabled = !uiState.isLoading
             )
 
             Spacer(Modifier.height(16.dp))
 
+            /* ----------------------------- Password --------------------------- */
             OutlinedTextField(
-                value = state.password,
-                onValueChange = onPasswordChange,
+                value = uiState.password,
+                onValueChange = { viewModel.onPasswordChanged(it) },
                 label = { Text("Contraseña") },
                 placeholder = { Text("Mínimo 8 caracteres", color = colors.onSurfaceVariant) },
                 modifier = Modifier.fillMaxWidth(),
                 singleLine = true,
-                visualTransformation = if (state.showPassword) VisualTransformation.None else PasswordVisualTransformation(),
+                visualTransformation = if (uiState.showPassword)
+                    VisualTransformation.None
+                else
+                    PasswordVisualTransformation(),
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
                 trailingIcon = {
-                    IconButton(onClick = onTogglePassword) {
+                    IconButton(onClick = { viewModel.onTogglePasswordVisibility() }) {
                         Icon(
-                            imageVector = if (state.showPassword) Icons.Filled.VisibilityOff else Icons.Filled.Visibility,
-                            contentDescription = if (state.showPassword) "Ocultar contraseña" else "Mostrar contraseña",
+                            imageVector = if (uiState.showPassword)
+                                Icons.Filled.VisibilityOff
+                            else
+                                Icons.Filled.Visibility,
+                            contentDescription = if (uiState.showPassword)
+                                "Ocultar contraseña"
+                            else
+                                "Mostrar contraseña",
                             tint = colors.onSurfaceVariant
                         )
                     }
@@ -149,35 +169,66 @@ fun LoginScreen(
                     focusedContainerColor = colors.surface,
                     unfocusedContainerColor = colors.surface
                 ),
-                shape = MaterialTheme.shapes.medium
+                shape = MaterialTheme.shapes.medium,
+                enabled = !uiState.isLoading
             )
 
             Spacer(Modifier.height(8.dp))
 
+            // Link "olvidé mi pass"
             Text(
                 text = "¿Olvidaste tu contraseña?",
                 style = MaterialTheme.typography.labelLarge.copy(color = colors.primary),
                 modifier = Modifier
                     .align(Alignment.Start)
-                    .clickable { onForgotPasswordClick() }
+                    .clickable {
+                        viewModel.onForgotPasswordClick()
+                        onForgotPasswordClick()
+                    }
                     .padding(vertical = 8.dp)
             )
 
-            Spacer(Modifier.weight(1f))
+            Spacer(Modifier.height(24.dp))
 
+            // Mensaje de error
+            if (uiState.errorMessage != null) {
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(
+                        containerColor = colors.errorContainer
+                    )
+                ) {
+                    Text(
+                        text = uiState.errorMessage!!,
+                        color = colors.onErrorContainer,
+                        style = MaterialTheme.typography.bodySmall,
+                        modifier = Modifier.padding(12.dp)
+                    )
+                }
+                Spacer(Modifier.height(16.dp))
+            }
+
+            // Personaje "Tito"
             Image(
                 painter = painterResource(id = R.drawable.guru),
                 contentDescription = "Tito",
-                modifier = Modifier.size(370.dp),
+                modifier = Modifier
+                    .size(280.dp)
+                    .padding(vertical = 16.dp),
                 contentScale = ContentScale.Fit
             )
 
-            Spacer(Modifier.weight(1f))
+            Spacer(Modifier.height(24.dp))
 
+            // Botón principal
             Button(
-                onClick = onSubmit,
-                modifier = Modifier.fillMaxWidth().height(50.dp),
-                enabled = state.isLoginEnabled,
+                onClick = {
+                    viewModel.onLoginClick(onSuccess = onLoginSuccess)
+                },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(50.dp),
+                enabled = uiState.isLoginEnabled && !uiState.isLoading,
                 colors = ButtonDefaults.buttonColors(
                     containerColor = colors.primary,
                     contentColor = colors.onPrimary,
@@ -186,34 +237,39 @@ fun LoginScreen(
                 ),
                 shape = MaterialTheme.shapes.large
             ) {
-                if (state.isLoading) {
-                    CircularProgressIndicator(strokeWidth = 2.dp)
+                if (uiState.isLoading) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(24.dp),
+                        color = colors.onPrimary,
+                        strokeWidth = 2.dp
+                    )
                 } else {
                     Text(
                         text = "Continuar",
-                        style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Medium)
+                        style = MaterialTheme.typography.titleSmall.copy(
+                            fontWeight = FontWeight.Medium
+                        )
                     )
                 }
             }
 
-            Spacer(Modifier.height(24.dp))
+            Spacer(Modifier.height(16.dp))
         }
     }
 }
-// Preview sin Hilt: usa Screen stateless
-@Preview(showBackground = true, showSystemUi = true)
+
+@Preview(showBackground = true, showSystemUi = true, name = "Login – Light")
 @Composable
-private fun LoginScreenPreview() {
-    com.example.compose.FitMatchTheme(darkTheme = false, dynamicColor = false) {
-        LoginScreen(
-            state = LoginUiState(emailOrPhone = "demo@fitmatch.com"),
-            snackbarHostState = remember { SnackbarHostState() },
-            onBackClick = {},
-            onForgotPasswordClick = {},
-            onEmailChange = {},
-            onPasswordChange = {},
-            onTogglePassword = {},
-            onSubmit = {}
-        )
+private fun LoginScreenPreviewLight() {
+    FitMatchTheme(darkTheme = false, dynamicColor = false) {
+        LoginScreen()
+    }
+}
+
+@Preview(showBackground = true, showSystemUi = true, name = "Login – Dark")
+@Composable
+private fun LoginScreenPreviewDark() {
+    FitMatchTheme(darkTheme = true, dynamicColor = false) {
+        LoginScreen()
     }
 }

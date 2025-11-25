@@ -2,10 +2,15 @@ plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
+    id("kotlin-parcelize")
+
+    // Add the Google services Gradle plugin
+    id("com.google.gms.google-services")
+
+
 }
 
 android {
-
     namespace = "com.example.fitmatch"
     compileSdk = 36
 
@@ -17,8 +22,6 @@ android {
         versionName = "1.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
-        manifestPlaceholders["auth0Domain"] = "@string/com_auth0_domain"
-        manifestPlaceholders["auth0Scheme"] = "demo"
     }
 
     buildTypes {
@@ -43,16 +46,7 @@ android {
 }
 
 dependencies {
-    implementation("com.auth0.android:auth0:2.+")
-    // ViewModel + Compose interop
-    implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.8.6")
-    implementation("androidx.lifecycle:lifecycle-runtime-compose:2.8.6")
-    // Activity Compose host
-    implementation("androidx.activity:activity-compose:1.11.0")
-    // Hilt + Compose
-    implementation("androidx.hilt:hilt-navigation-compose:1.0.0")
-    // Coroutines
-    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.9.0")
+
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)
     implementation(libs.androidx.activity.compose)
@@ -63,6 +57,7 @@ dependencies {
     implementation(libs.androidx.material3)
     implementation(libs.androidx.compose.material)
     implementation(libs.androidx.runtime.saveable)
+    implementation(libs.androidx.compose.foundation)
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
@@ -76,8 +71,39 @@ dependencies {
     implementation(libs.coil.compose)
     implementation(libs.androidx.activity.compose.v181)
     implementation("androidx.compose.material:material-icons-extended")
+    //dependencias para mapa y localizacion
+    implementation("org.osmdroid:osmdroid-android:6.1.17")
+    implementation("com.google.android.gms:play-services-location:21.0.1")
+    implementation("com.google.accompanist:accompanist-permissions:0.32.0")
 
+    // Import the Firebase BoM
+    implementation(platform("com.google.firebase:firebase-bom:34.4.0"))
+
+    // Required only if Facebook login support is required
+    // Find the latest Facebook SDK releases here: https://goo.gl/Ce5L94
+    implementation("com.facebook.android:facebook-android-sdk:latest.release")
+
+    // Add the dependency for the Firebase Authentication library
+    // When using the BoM, you don't specify versions in Firebase library dependencies
+    implementation("com.google.firebase:firebase-auth")
+    implementation("androidx.credentials:credentials")
+    implementation("androidx.credentials:credentials-play-services-auth")
+    implementation("com.google.android.libraries.identity.googleid:googleid:1.1.1")
+    implementation("com.google.firebase:firebase-firestore")
+
+    implementation("androidx.credentials:credentials")
+    implementation("androidx.credentials:credentials-play-services-auth")
+    implementation("com.google.android.libraries.identity.googleid:googleid")
+
+    // Google Sign-In
+    implementation("com.google.android.gms:play-services-auth")
+
+    implementation("com.google.accompanist:accompanist-permissions:0.36.0")
+    implementation("androidx.compose.material3:material3:1.4.0")
+    implementation("io.coil-kt.coil3:coil-network-okhttp:3.1.0")
+    implementation("androidx.media3:media3-exoplayer:1.4.1")
+    implementation("androidx.media3:media3-ui:1.4.1")
     // build.gradle (Module: app)
-
-
+    implementation("com.cloudinary:cloudinary-android:3.0.2")
+    implementation(libs.firebase.realtime)
 }

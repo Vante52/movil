@@ -5,13 +5,15 @@ sealed class AppScreens (val route: String) {
     object Register : AppScreens("register")
     object Login : AppScreens ("login")
     object Preferences : AppScreens("preferences")
+    object CompleteProfile : AppScreens("complete_profile/{userId}") {
+        fun withUserId(userId: String) = "complete_profile/$userId"
+    }
     object Home : AppScreens("home/{role}") {
         fun withRole(role: String) = "home/$role" // role: "Cliente" | "Vendedor"
     }
     object Search : AppScreens("search")
     object ProductDetail : AppScreens("product_detail")
     object Cart : AppScreens("cart")
-    object CreateProduct : AppScreens("create_product")
     object Orders : AppScreens("orders")
     object DeliveryPickup : AppScreens("delivery_pickup")
     object Chat : AppScreens("chat/{chatId}")
@@ -21,4 +23,5 @@ sealed class AppScreens (val route: String) {
     object ChatList : AppScreens("chat_list")
     object TitoChat : AppScreens("tito_chat")
     object Favorites : AppScreens("favorites")
+    object Create : AppScreens("create_product")
 }

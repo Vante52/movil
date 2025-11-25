@@ -1,3 +1,13 @@
 <resources>
     <string name="app_name">FitMatch</string>
+    <!-- Google OAuth -->
+    <string name="default_web_client_id">237240982581-kk64imtajpi4nc4anc63o8p90ksntj5t.apps.googleusercontent.com</string>
+
+    <!-- Facebook OAuth -->
+    <string name="facebook_app_id">788554694087125</string>
+    <string name="facebook_client_token">a64adfb7fdbbfd423e7d23c1ec6c33cf</string>
+    <string name="fb_login_protocol_scheme">fb788554694087125</string>
+
+    <string name="cloudinary_cloud_name">ddzyuhpnn</string>
+    <string name="cloudinary_upload_preset">fitmatch_preset</string>
 </resources>
