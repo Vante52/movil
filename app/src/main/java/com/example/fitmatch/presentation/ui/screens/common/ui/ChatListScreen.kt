@@ -22,6 +22,7 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.PushPin
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.Badge
 import androidx.compose.material3.BadgedBox
@@ -52,12 +53,13 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.fitmatch.presentation.viewmodel.user.ChatListViewModel
 import com.example.fitmatch.presentation.viewmodel.user.ChatRowState
+import com.example.fitmatch.presentation.viewmodel.user.ChatUserRow
 
 @Composable
 fun ChatListScreen(
     vm: ChatListViewModel = viewModel(),
     onBackClick: () -> Unit = {},
-    onOpenChat: (chatId: String, isTito: Boolean) -> Unit = { _, _ -> },
+    onOpenChat: (chatId: String, isTito: Boolean, contactName: String, otherUserId: String?) -> Unit = { _, _, _, _ -> },
     onNewChat: () -> Unit = {},
     onMoreClick: () -> Unit = {}
 ) {
@@ -66,6 +68,7 @@ fun ChatListScreen(
 
     var query by remember { mutableStateOf("") }
     var selectedFilter by remember { mutableStateOf("Todos") }
+    var showUserResults by remember { mutableStateOf(false) }
 
     Scaffold(
         topBar = {
@@ -126,7 +129,11 @@ fun ChatListScreen(
         ) {
             OutlinedTextField(
                 value = query,
-                onValueChange = { query = it },
+                onValueChange = {
+                    query = it
+                    showUserResults = it.isNotBlank()
+                    vm.searchUsers(it)
+                },
                 leadingIcon = { Icon(Icons.Filled.Search, contentDescription = null) },
                 placeholder = { Text("Buscar chat o usuario…") },
                 singleLine = true,
@@ -180,15 +187,71 @@ fun ChatListScreen(
                             item {
                                 TitoPinnedCard(
                                     row = row,
-                                    onClick = { onOpenChat(row.id, true) }
+                                    onClick = { onOpenChat(row.id, true, row.title, row.otherUserId) }
                                 )
                             }
                         }
                         items(regularChats, key = { it.id }) { row ->
                             ChatListCard(
                                 row = row,
-                                onClick = { onOpenChat(row.id, row.isTito) }
+                                onClick = { onOpenChat(row.id, row.isTito, row.title, row.otherUserId) }
                             )
+                        }
+                        if (showUserResults) {
+                            item {
+                                Text(
+                                    text = "Usuarios",
+                                    style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold),
+                                    modifier = Modifier.padding(top = 4.dp)
+                                )
+                            }
+                            when {
+                                uiState.isSearchingUsers -> {
+                                    item {
+                                        Box(
+                                            modifier = Modifier
+                                                .fillMaxWidth()
+                                                .padding(vertical = 12.dp),
+                                            contentAlignment = Alignment.Center
+                                        ) {
+                                            CircularProgressIndicator()
+                                        }
+                                    }
+                                }
+
+                                uiState.userSearchError != null -> {
+                                    item {
+                                        Text(
+                                            text = uiState.userSearchError!!,
+                                            color = MaterialTheme.colorScheme.error,
+                                            modifier = Modifier.padding(vertical = 8.dp)
+                                        )
+                                    }
+                                }
+
+                                uiState.userResults.isEmpty() -> {
+                                    item {
+                                        Text(
+                                            text = "No se encontraron usuarios",
+                                            modifier = Modifier.padding(vertical = 8.dp)
+                                        )
+                                    }
+                                }
+
+                                else -> {
+                                    items(uiState.userResults, key = { it.id }) { user ->
+                                        UserResultCard(
+                                            user = user,
+                                            isLoading = uiState.isStartingChat,
+                                            onClick = {
+                                                vm.openChatWithUser(user.id) { chatId ->
+                                                    onOpenChat(chatId, false, user.name, user.id)
+                                                }
+                                            }
+                                        )
+                                    }
+                                }
+                            }
                         }
                         if (filteredChats.isEmpty()) {
                             item {
@@ -204,7 +267,11 @@ fun ChatListScreen(
                         }
                         item {
                             OutlinedButton(
-                                onClick = onNewChat,
+                                onClick = {
+                                    showUserResults = true
+                                    vm.loadAllUsers()
+                                    onNewChat()
+                                },
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .padding(top = 8.dp),
@@ -328,6 +395,44 @@ private fun ChatListCard(
                             Spacer(Modifier.size(1.dp))
                         }
                     }
+                }
+            }
+        )
+    }
+}
+
+@Composable
+private fun UserResultCard(
+    user: ChatUserRow,
+    isLoading: Boolean,
+    onClick: () -> Unit
+) {
+    val colors = MaterialTheme.colorScheme
+    Card(
+        shape = RoundedCornerShape(14.dp),
+        colors = CardDefaults.cardColors(containerColor = colors.surfaceVariant.copy(alpha = 0.4f)),
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(enabled = !isLoading, onClick = onClick)
+    ) {
+        ListItem(
+            leadingContent = {
+                Box(
+                    Modifier
+                        .size(48.dp)
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(colors.surfaceVariant)
+                )
+            },
+            headlineContent = {
+                Text(user.name.ifBlank { "Usuario" }, fontWeight = FontWeight.SemiBold)
+            },
+            supportingContent = {
+                Text(user.email)
+            },
+            trailingContent = {
+                if (isLoading) {
+                    CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
                 }
             }
         )
