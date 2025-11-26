@@ -21,6 +21,7 @@ credentialsPlayServicesAuth = "1.5.0"
 googleid = "1.1.1"
 material3Version = "1.4.0"
 ui = "1.9.5"
+foundationVersion = "1.9.5"
 
 [libraries]
 androidx-activity-compose-v181 = { module = "androidx.activity:activity-compose", version.ref = "activityComposeVersion" }
@@ -51,6 +52,7 @@ androidx-compose-foundation = { group = "androidx.compose.foundation", name = "f
 androidx-compose-material3-material3 = { group = "androidx.compose.material3", name = "material3", version.ref = "material3Version" }
 firebase-realtime={module= "com.google.firebase:firebase-database-ktx", version = "21.0.0" }
 androidx-compose-ui = { group = "androidx.compose.ui", name = "ui", version.ref = "ui" }
+androidx-foundation = { group = "androidx.compose.foundation", name = "foundation", version.ref = "foundationVersion" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }

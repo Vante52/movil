@@ -22,6 +22,8 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
+
+import com.example.fitmatch.presentation.ui.screens.cliente.state.ProductCardState
 import com.example.fitmatch.presentation.ui.components.BottomNavItem
 import com.example.fitmatch.presentation.ui.components.BottomNavigationBar
 import com.example.fitmatch.presentation.ui.screens.auth.ui.CompleteProfileScreen
@@ -269,9 +271,15 @@ fun MainNavigation() {
                     ClienteDashboardScreen(
                         onBackClick = { navController.popBackStack() },
                         //onFollowClick = { },
-                        //onProductClick = { navController.navigate(AppScreens.ProductDetail.route) },
-                        //onStoreClick = { navController.navigate(AppScreens.StoreProfile.route) },
+                        onProductClick = { product ->
+                            navController.currentBackStackEntry?.savedStateHandle?.set(
+                                "productDetail",
+                                product
+                            )
+                            navController.navigate(AppScreens.ProductDetail.route)
+                        },                        //onStoreClick = { navController.navigate(AppScreens.StoreProfile.route) },
                         onFilterClick = { navController.navigate(AppScreens.Search.route) },
+                        //onOpen
                         //onOpenComments = { /* ... */ },
                         //onAddToCart = { /* ... */ }
                     )
@@ -296,7 +304,7 @@ fun MainNavigation() {
 
             composable(AppScreens.ProductDetail.route) {
                 ProductDetailScreen(
-                    onBuyClick = { navController.navigate(AppScreens.Cart.route) },
+                    product = navController.previousBackStackEntry?.savedStateHandle?.get<ProductCardState>("productDetail"),                    onBuyClick = { navController.navigate(AppScreens.Cart.route) },
                     onBackClick = { navController.popBackStack() }
                 )
             }

@@ -1,5 +1,7 @@
 package com.example.fitmatch.presentation.ui.screens.cliente.state
 
+import java.io.Serializable
+
 //estado INMUTABLE del dashboard
 data class ClienteDashboardUiState(
     val productDeck: List<ProductCardState> = emptyList(),
@@ -26,13 +28,15 @@ data class ProductCardState(
     val brand: String,
     val price: Int,
     val imageUrl: String = "",
+    val imageUrls: List<String> = emptyList(),
     val category: String = "",
     val size: String = "",
     val color: String = "",
+    val description: String = "",
     val tags: List<String> = emptyList(),
     val isSaved: Boolean = false,
     val storeUrl: String = ""
-)
+): Serializable
 
 //historial de los swipes
 data class SwipeActionHistory(

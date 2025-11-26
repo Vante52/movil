@@ -271,9 +271,11 @@ class ClienteDashboardViewModel(
         brand = brand,
         price = price,
         imageUrl = imageUrls.firstOrNull().orEmpty(),
+        imageUrls = imageUrls,
         category = category,
         size = sizes.firstOrNull().orEmpty(),
         color = color,
+        description = description,
         tags = tags,
         storeUrl = ""
     )

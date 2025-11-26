@@ -436,7 +436,7 @@ fun CreateProductScreen(
                         colors = ButtonDefaults.outlinedButtonColors(
                             contentColor = colors.primary
                         ),
-                        border = ButtonDefaults.outlinedButtonBorder.copy(
+                        border = ButtonDefaults.BorderStroke.copy(
                             brush = SolidColor(colors.outline)
                         ),
                         shape = shapes.large

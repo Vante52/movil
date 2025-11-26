@@ -20,6 +20,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
@@ -29,7 +30,9 @@ import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import coil.compose.AsyncImage
 import com.example.compose.FitMatchTheme
+import com.example.fitmatch.presentation.ui.screens.cliente.state.ProductCardState
 
 // ────────────────────────────────────────────────────────────────────────────────
 // DATA
@@ -75,6 +78,7 @@ data class ProductSocial(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ProductDetailScreen(
+    product: ProductCardState? = null,
     onBackClick: () -> Unit = {},
     onMoreClick: () -> Unit = {},
     onBuyClick: () -> Unit = {},
@@ -82,7 +86,22 @@ fun ProductDetailScreen(
 ) {
     val colors = MaterialTheme.colorScheme
 
-    val productDetail = ProductDetail(
+    val productDetail = product?.let {
+        val formattedPrice = "$${formatPrice(it.price)}"
+        ProductDetail(
+            title = it.title,
+            originalPrice = formattedPrice,
+            currentPrice = formattedPrice,
+            isOnSale = false,
+            brand = it.brand.ifBlank { "Vendedor" },
+            size = it.size.ifBlank { "Talla única" },
+            category = it.category.ifBlank { "Sin categoría" },
+            condition = it.description.ifBlank { "Sin descripción" },
+            color = it.color.ifBlank { "Sin color" },
+            mascotMessage = "Descubre más detalles de este producto",
+            sellerName = it.brand.ifBlank { "Vendedor" }
+        )
+    } ?: ProductDetail(
         title = "Pantalón Blanco",
         originalPrice = "$380,000",
         currentPrice = "$300,000",
@@ -96,7 +115,7 @@ fun ProductDetailScreen(
         sellerName = "Planeta Vintage"
     )
 
-    val social = remember {
+    val social = remember(product) {
         ProductSocial(
             likes = 120,
             comments = listOf(
@@ -104,8 +123,13 @@ fun ProductDetailScreen(
                 ProductComment("andrea.v", "Lo compré, la tela es divina 💖"),
                 ProductComment("joseph", "¿Hay entrega hoy en Bogotá?")
             ),
-            caption = "Fit relajado, tiro medio. Ideal para street outfits."
-        )
+            caption = product?.description.takeUnless { it.isNullOrBlank() }
+                ?: "Fit relajado, tiro medio. Ideal para street outfits."        )
+    }
+    val mainImageUrl = remember(product) {
+        product?.imageUrls?.firstOrNull { it.isNotBlank() }
+            ?: product?.imageUrl
+            ?: ""
     }
 
     val detailSections = listOf(
@@ -177,7 +201,16 @@ fun ProductDetailScreen(
                             .background(colors.surfaceVariant),
                         contentAlignment = Alignment.Center
                     ) {
-                        Text("Imagen del Producto", color = colors.onSurfaceVariant, fontSize = 16.sp)
+                        if (mainImageUrl.isNotBlank()) {
+                            AsyncImage(
+                                model = mainImageUrl,
+                                contentDescription = productDetail.title,
+                                modifier = Modifier.fillMaxSize(),
+                                contentScale = ContentScale.Crop
+                            )
+                        } else {
+                            Text("Imagen del Producto", color = colors.onSurfaceVariant, fontSize = 16.sp)
+                        }
                     }
                 }
 
@@ -411,6 +444,9 @@ private fun DetailSectionItem(
         }
     }
 }
+private fun formatPrice(value: Int): String =
+    String.format("%,d", value).replace(',', '.')
+
 
 // ────────────────────────────────────────────────────────────────────────────────
 // PREVIEWS

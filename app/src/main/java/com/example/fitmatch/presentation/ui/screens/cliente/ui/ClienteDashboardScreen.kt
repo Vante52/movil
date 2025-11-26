@@ -20,12 +20,14 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
@@ -40,6 +42,7 @@ import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
+import coil.compose.AsyncImage
 import com.example.fitmatch.presentation.ui.screens.cliente.state.ProductCardState
 import com.example.fitmatch.presentation.viewmodel.user.ClienteDashboardViewModel
 import com.example.fitmatch.presentation.viewmodel.user.DashboardEvent
@@ -59,7 +62,8 @@ fun ClienteDashboardScreen(
     onFilterClick: () -> Unit = {},
     onProductSeen: (ProductCardState) -> Unit = {},
     onProductLiked: (ProductCardState) -> Unit = {},
-    onProductPassed: (ProductCardState) -> Unit = {}
+    onProductPassed: (ProductCardState) -> Unit = {},
+    onProductClick: (ProductCardState) -> Unit = {}
 ) {
     val colors = MaterialTheme.colorScheme
     val context = LocalContext.current
@@ -108,26 +112,23 @@ fun ClienteDashboardScreen(
 
     val lifecycleOwner = LocalLifecycleOwner.current
 
-    LaunchedEffect(Unit) {
-        lifecycleOwner.lifecycle.addObserver(
-            LifecycleEventObserver { _, event ->
-                when (event) {
-                    Lifecycle.Event.ON_RESUME -> {
-                        viewModel.startTemperatureSensor()
-                    }
-                    Lifecycle.Event.ON_PAUSE -> {
-                        viewModel.stopTemperatureSensor()
-                    }
-                    else -> {}
-                }
+    DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            when (event) {
+                Lifecycle.Event.ON_RESUME -> viewModel.startTemperatureSensor()
+                Lifecycle.Event.ON_PAUSE -> viewModel.stopTemperatureSensor()
+                else -> Unit
             }
-        )
+        }
+
+        lifecycleOwner.lifecycle.addObserver(observer)
+
+        onDispose {
+            lifecycleOwner.lifecycle.removeObserver(observer)
+        }
     }
 
 
-    // Bottom Sheet para detalles del producto
-    var selectedProduct by remember { mutableStateOf<ProductCardState?>(null) }
-    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     val temperature by viewModel.temperature.collectAsState(initial = 15f)
 
     Scaffold(
@@ -275,7 +276,7 @@ fun ClienteDashboardScreen(
                                 if (isLike) viewModel.onSwipeRight()
                                 else viewModel.onSwipeLeft()
                             },
-                            onViewDetails = { selectedProduct = it },
+                            onViewDetails = onProductClick,
                             onSaveToggle = { viewModel.onToggleSave(it.id) }
                         )
                     }
@@ -289,7 +290,7 @@ fun ClienteDashboardScreen(
                     onPass = { viewModel.onSwipeLeft() },
                     onUndo = { viewModel.onUndo() },
                     onViewDetails = {
-                        uiState.currentProduct?.let { selectedProduct = it }
+                        uiState.currentProduct?.let(onProductClick)
                     },
                     onSave = {
                         uiState.currentProduct?.let { viewModel.onToggleSave(it.id) }
@@ -300,22 +301,6 @@ fun ClienteDashboardScreen(
                     }
                 )
             }
-        }
-
-        // Bottom Sheet de detalles
-        if (selectedProduct != null) {
-            ProductDetailSheet(
-                product = selectedProduct!!,
-                sheetState = sheetState,
-                onDismiss = { selectedProduct = null },
-                onOpenStore = { product ->
-                    viewModel.onOpenStore(product)
-                    selectedProduct = null
-                },
-                onSaveToggle = { product, _ ->
-                    viewModel.onToggleSave(product.id)
-                }
-            )
         }
     }
 }
@@ -477,38 +462,47 @@ private fun SwipeableProductCard(
         border = BorderStroke(1.dp, colors.outline.copy(alpha = 0.15f))
     ) {
         Box(modifier = Modifier.fillMaxSize()) {
-            // Imagen / placeholder con gradiente
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .background(
-                        Brush.verticalGradient(
-                            colors = listOf(
-                                colors.surfaceVariant,
-                                colors.surface
-                            ),
-                            startY = 0f,
-                            endY = Float.POSITIVE_INFINITY
-                        )
-                    ),
-                contentAlignment = Alignment.Center
-            ) {
-                Column(
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.Center
+            if (product.imageUrl.isNotBlank()) {
+                AsyncImage(
+                    model = product.imageUrl,
+                    contentDescription = product.title,
+                    modifier = Modifier.fillMaxSize(),
+                    contentScale = ContentScale.Crop
+                )
+            } else {
+                // Placeholder de imagen con gradiente
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(
+                            Brush.verticalGradient(
+                                colors = listOf(
+                                    colors.surfaceVariant,
+                                    colors.surface
+                                ),
+                                startY = 0f,
+                                endY = Float.POSITIVE_INFINITY
+                            )
+                        ),
+                    contentAlignment = Alignment.Center
                 ) {
-                    Icon(
-                        Icons.Filled.ShoppingBag,
-                        contentDescription = null,
-                        tint = colors.onSurfaceVariant,
-                        modifier = Modifier.size(80.dp)
-                    )
-                    Text(
-                        "Imagen del producto",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = colors.onSurfaceVariant,
-                        modifier = Modifier.padding(top = 12.dp)
-                    )
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.Center
+                    ) {
+                        Icon(
+                            Icons.Filled.ShoppingBag,
+                            contentDescription = null,
+                            tint = colors.onSurfaceVariant,
+                            modifier = Modifier.size(80.dp)
+                        )
+                        Text(
+                            "Imagen del producto",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = colors.onSurfaceVariant,
+                            modifier = Modifier.padding(top = 12.dp)
+                        )
+                    }
                 }
             }
 
@@ -920,6 +914,9 @@ private fun ProductDetailSheet(
     onSaveToggle: (ProductCardState, Boolean) -> Unit
 ) {
     val colors = MaterialTheme.colorScheme
+    val mainImageUrl = remember(product.imageUrls, product.imageUrl) {
+        product.imageUrls.firstOrNull()?.takeIf { it.isNotBlank() } ?: product.imageUrl
+    }
 
     ModalBottomSheet(
         onDismissRequest = onDismiss,
@@ -933,6 +930,19 @@ private fun ProductDetailSheet(
                 .fillMaxWidth()
                 .padding(horizontal = 24.dp, vertical = 16.dp)
         ) {
+            if (mainImageUrl.isNotBlank()) {
+                AsyncImage(
+                    model = mainImageUrl,
+                    contentDescription = product.title,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(220.dp)
+                        .clip(RoundedCornerShape(16.dp)),
+                    contentScale = ContentScale.Crop
+                )
+                Spacer(modifier = Modifier.height(20.dp))
+            }
+
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.Top,
@@ -970,6 +980,21 @@ private fun ProductDetailSheet(
             SpecificationRow(title = "Categoría", value = product.category)
             SpecificationRow(title = "Talla", value = product.size)
             SpecificationRow(title = "Color", value = product.color)
+
+            if (product.description.isNotBlank()) {
+                Spacer(modifier = Modifier.height(12.dp))
+                Text(
+                    "Descripción",
+                    style = MaterialTheme.typography.labelLarge,
+                    color = colors.onSurfaceVariant,
+                    modifier = Modifier.padding(bottom = 6.dp)
+                )
+                Text(
+                    product.description,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = colors.onSurface,
+                )
+            }
 
             Spacer(modifier = Modifier.height(20.dp))
 
