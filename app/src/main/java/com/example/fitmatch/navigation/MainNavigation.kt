@@ -17,8 +17,10 @@ import androidx.compose.ui.Modifier
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.NavType
+import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
+import androidx.navigation.navArgument
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
@@ -330,8 +332,13 @@ fun MainNavigation() {
 
 
             // Chat genérico (si tienes una pantalla sin id)
-            composable(AppScreens.Chat.route) {
+            composable(
+                AppScreens.Chat.route,
+                arguments = listOf(navArgument("chatId") { type = NavType.StringType })
+            ) { backStackEntry ->
+                val chatId = backStackEntry.arguments?.getString("chatId") ?: return@composable
                 ChatScreen(
+                    chatId = chatId,
                     onBackClick = { navController.popBackStack() },
                     onMoreClick = {},
                     onCallClick = {}
