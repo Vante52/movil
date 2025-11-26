@@ -59,7 +59,7 @@ import com.example.fitmatch.presentation.viewmodel.user.ChatUserRow
 fun ChatListScreen(
     vm: ChatListViewModel = viewModel(),
     onBackClick: () -> Unit = {},
-    onOpenChat: (chatId: String, isTito: Boolean) -> Unit = { _, _ -> },
+    onOpenChat: (chatId: String, isTito: Boolean, contactName: String, otherUserId: String?) -> Unit = { _, _, _, _ -> },
     onNewChat: () -> Unit = {},
     onMoreClick: () -> Unit = {}
 ) {
@@ -187,14 +187,14 @@ fun ChatListScreen(
                             item {
                                 TitoPinnedCard(
                                     row = row,
-                                    onClick = { onOpenChat(row.id, true) }
+                                    onClick = { onOpenChat(row.id, true, row.title, row.otherUserId) }
                                 )
                             }
                         }
                         items(regularChats, key = { it.id }) { row ->
                             ChatListCard(
                                 row = row,
-                                onClick = { onOpenChat(row.id, row.isTito) }
+                                onClick = { onOpenChat(row.id, row.isTito, row.title, row.otherUserId) }
                             )
                         }
                         if (showUserResults) {

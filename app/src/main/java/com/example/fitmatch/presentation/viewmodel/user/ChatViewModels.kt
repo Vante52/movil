@@ -64,6 +64,8 @@ class ChatListViewModel(
     private val _uiState = MutableStateFlow(ChatListUiState())
     val uiState: StateFlow<ChatListUiState> = _uiState.asStateFlow()
 
+    private val userNameCache = mutableMapOf<String, String>()
+
     init {
         observeChats()
     }
@@ -77,6 +79,25 @@ class ChatListViewModel(
 
         viewModelScope.launch(dispatcher) {
             realtimeRepo.observeUserChats(userId).collect { chats ->
+                val rows = chats.map { chat ->
+                    val otherParticipant = chat.participantIds.firstOrNull { id -> id != userId }
+                    val resolvedName = try {
+                        loadUserName(otherParticipant)
+                    } catch (_: Exception) {
+                        otherParticipant?.takeIf { it.isNotBlank() } ?: "Chat"
+                    }
+
+                    ChatRowState(
+                        id = chat.id,
+                        title = resolvedName,
+                        subtitle = chat.lastMessage.ifBlank { "Empieza la conversación" },
+                        time = formatTimestamp(chat.lastMessageAt),
+                        unread = chat.unreadCount[userId] ?: 0,
+                        isTito = chat.isTito,
+                        otherUserId = otherParticipant
+                    )
+                }
+
                 _uiState.update {
                     it.copy(
                         isLoading = false,
@@ -95,6 +116,33 @@ class ChatListViewModel(
                         }
                     )
                 }
+            } catch (e: Exception) {
+                _uiState.update { it.copy(isSearchingUsers = false, userSearchError = e.message ?: "Error al cargar usuarios") }
+            }
+        }
+    }
+
+    fun openChatWithUser(userId: String, onChatReady: (String) -> Unit) {
+        val currentUserId = auth.currentUser?.uid
+        if (currentUserId == null) {
+            _uiState.update { it.copy(error = "Debes iniciar sesión para iniciar un chat") }
+            return
+        }
+
+        viewModelScope.launch(dispatcher) {
+            try {
+                _uiState.update { it.copy(isStartingChat = true, error = null) }
+                val existingChat = _uiState.value.chats.firstOrNull { it.otherUserId == userId }
+                val chatId = existingChat?.id ?: realtimeRepo.createChat(
+                    Chat(
+                        participantIds = listOf(currentUserId, userId)
+                    )
+                )
+                onChatReady(chatId)
+            } catch (e: Exception) {
+                _uiState.update { it.copy(error = e.message ?: "No se pudo iniciar el chat") }
+            } finally {
+                _uiState.update { it.copy(isStartingChat = false) }
             }
         }
     }
