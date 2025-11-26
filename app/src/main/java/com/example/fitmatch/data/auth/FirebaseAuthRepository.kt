@@ -1,6 +1,7 @@
 package com.example.fitmatch.data.auth
 
 import com.example.fitmatch.model.user.User
+import com.google.firebase.Timestamp
 import com.google.firebase.auth.AuthCredential
 import com.google.firebase.auth.EmailAuthProvider
 import com.google.firebase.auth.FirebaseAuth
@@ -103,6 +104,34 @@ class FirebaseAuthRepository(
 
         val user = snapshot.toObject(User::class.java)
         Result.success(user)
+    } catch (e: Exception) {
+        Result.failure(e)
+    }
+
+    //Actualizar ubicación
+    override suspend fun updateUserLocation(
+        userId: String,
+        latitude: Double,
+        longitude: Double,
+        address: String?
+    ): Result<Unit> = try {
+        val updates = hashMapOf<String, Any>(
+            "latitude" to latitude,
+            "longitude" to longitude,
+            "locationUpdatedAt" to Timestamp.now(),
+            "updatedAt" to Timestamp.now()
+        )
+
+        if (address != null) {
+            updates["address"] = address
+        }
+
+        firestore.collection("users")
+            .document(userId)
+            .update(updates)
+            .await()
+
+        Result.success(Unit)
     } catch (e: Exception) {
         Result.failure(e)
     }

@@ -22,8 +22,10 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.compose.FitMatchTheme
+import com.example.fitmatch.presentation.viewmodel.common.LocationManagerViewModel
 import com.example.fitmatch.presentation.viewmodel.user.ProfileViewModel
 
 data class ProfileSection(
@@ -722,3 +724,67 @@ private fun ProfilePreviewLight() {
         ProfileScreen()
     }
 }
+
+@Composable
+private fun LocationSection(
+    viewModel: LocationManagerViewModel,
+    modifier: Modifier = Modifier
+) {
+    val colors = MaterialTheme.colorScheme
+    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+
+    Card(
+        modifier = modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(containerColor = colors.surface),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+        shape = RoundedCornerShape(12.dp)
+    ) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Text(
+                text = "UBICACIÓN",
+                fontSize = 12.sp,
+                fontWeight = FontWeight.Bold,
+                color = colors.onSurfaceVariant,
+                modifier = Modifier.padding(bottom = 12.dp)
+            )
+
+            if (uiState.address != null) {
+                Row(
+                    modifier = Modifier.padding(vertical = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(
+                        Icons.Default.LocationOn,
+                        contentDescription = null,
+                        tint = colors.primary,
+                        modifier = Modifier.size(20.dp)
+                    )
+                    Spacer(Modifier.width(12.dp))
+                    Text(
+                        text = uiState.address!!,
+                        fontSize = 14.sp,
+                        color = colors.onSurface
+                    )
+                }
+            }
+
+            Button(
+                onClick = { viewModel.updateCurrentLocation() },
+                modifier = Modifier.fillMaxWidth(),
+                enabled = !uiState.isUpdating
+            ) {
+                if (uiState.isUpdating) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(20.dp),
+                        strokeWidth = 2.dp
+                    )
+                } else {
+                    Icon(Icons.Default.MyLocation, contentDescription = null)
+                    Spacer(Modifier.width(8.dp))
+                    Text("Actualizar Ubicación")
+                }
+            }
+        }
+    }
+}
+

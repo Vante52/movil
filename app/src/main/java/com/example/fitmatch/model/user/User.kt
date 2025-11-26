@@ -31,6 +31,18 @@ data class User(
     @PropertyName("phone")
     val phone: String? = null,
 
+    @PropertyName("latitude")
+    val latitude: Double? = null,
+
+    @PropertyName("longitude")
+    val longitude: Double? = null,
+
+    @PropertyName("address")
+    val address: String? = null,
+
+    @PropertyName("locationUpdatedAt")
+    val locationUpdatedAt: Timestamp? = null,
+
     @PropertyName("createdAt")
     val createdAt: Timestamp = Timestamp.now(),
 
@@ -63,4 +75,23 @@ data class User(
             updatedAt = Timestamp.now()
         )
     }
+
+    //Verificar si tiene ubicación
+    fun hasLocation(): Boolean {
+        return latitude != null && longitude != null
+    }
+
+    /**
+     * Crea una copia del usuario con nueva ubicación
+     */
+    fun withLocation(lat: Double, lon: Double, addr: String? = null): User {
+        return this.copy(
+            latitude = lat,
+            longitude = lon,
+            address = addr,
+            locationUpdatedAt = Timestamp.now(),
+            updatedAt = Timestamp.now()
+        )
+    }
+
 }

@@ -30,9 +30,12 @@ import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
 import com.example.compose.FitMatchTheme
 import com.example.fitmatch.presentation.ui.screens.cliente.state.ProductCardState
+import com.example.fitmatch.presentation.viewmodel.user.CartViewModel
 
 // ────────────────────────────────────────────────────────────────────────────────
 // DATA
@@ -82,9 +85,16 @@ fun ProductDetailScreen(
     onBackClick: () -> Unit = {},
     onMoreClick: () -> Unit = {},
     onBuyClick: () -> Unit = {},
-    onOpenComments: () -> Unit = {}
+    onOpenComments: () -> Unit = {},
+    cartViewModel: CartViewModel = viewModel()
 ) {
     val colors = MaterialTheme.colorScheme
+    val cartUiState by cartViewModel.uiState.collectAsStateWithLifecycle()
+
+    // ========== ESTADOS LOCALES ==========
+    var selectedSize by remember { mutableStateOf("") }
+    var selectedColor by remember { mutableStateOf("") }
+    var showAddToCartDialog by remember { mutableStateOf(false) }
 
     val productDetail = product?.let {
         val formattedPrice = "$${formatPrice(it.price)}"
@@ -124,7 +134,7 @@ fun ProductDetailScreen(
                 ProductComment("joseph", "¿Hay entrega hoy en Bogotá?")
             ),
             caption = product?.description.takeUnless { it.isNullOrBlank() }
-                ?: "Fit relajado, tiro medio. Ideal para street outfits."        )
+                ?: "Fit relajado, tiro medio. Ideal para street outfits.")
     }
     val mainImageUrl = remember(product) {
         product?.imageUrls?.firstOrNull { it.isNotBlank() }
@@ -150,6 +160,61 @@ fun ProductDetailScreen(
     var likeCount by remember { mutableStateOf(social.likes) }
     var captionExpanded by remember { mutableStateOf(false) }
 
+    // ========== MOSTRAR MENSAJES DEL CARRITO ==========
+    LaunchedEffect(cartUiState.errorMessage) {
+        cartUiState.errorMessage?.let {
+            // Mostrar Snackbar o Toast
+            cartViewModel.onDismissError()
+        }
+    }
+
+    // ========== DIÁLOGO DE SELECCIÓN ==========
+    if (showAddToCartDialog && product != null) {
+        AddToCartDialog(
+            product = product,
+            selectedSize = selectedSize,
+            selectedColor = selectedColor,
+            onSizeSelected = { selectedSize = it },
+            onColorSelected = { selectedColor = it },
+            onDismiss = { showAddToCartDialog = false },
+            onConfirm = {
+                if (selectedSize.isBlank()) {
+                    // Mostrar error: debe seleccionar talla
+                    return@AddToCartDialog
+                }
+
+                // TODO: Obtener el Product completo desde el repositorio
+                // Por ahora creamos un Product mock desde ProductCardState
+                val productToAdd = com.example.fitmatch.model.product.Product(
+                    id = product.id,
+                    vendorId = "VENDOR_ID", // ⬅️ TODO: Obtener del producto real
+                    title = product.title,
+                    description = product.description,
+                    price = product.price,
+                    brand = product.brand,
+                    category = product.category,
+                    condition = "Nuevo", // ⬅️ TODO: Obtener del producto real
+                    color = selectedColor.ifBlank { product.color },
+                    sizes = listOf(selectedSize),
+                    tags = product.tags,
+                    imageUrls = product.imageUrls,
+                    stock = 10 // ⬅️ TODO: Obtener del producto real
+                )
+
+                cartViewModel.addToCart(
+                    product = productToAdd,
+                    vendorName = product.brand,
+                    size = selectedSize,
+                    color = selectedColor.ifBlank { product.color },
+                    quantity = 1
+                )
+
+                showAddToCartDialog = false
+                onBuyClick() // Navegar al carrito
+            }
+        )
+    }
+
     Scaffold(
         containerColor = colors.background,
         topBar = {
@@ -164,29 +229,51 @@ fun ProductDetailScreen(
                         .fillMaxWidth()
                         .padding(horizontal = 16.dp, vertical = 14.dp)
                 ) {
-                    IconButton(onClick = onBackClick, modifier = Modifier.align(Alignment.CenterStart)) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Volver", tint = colors.onSurface)
+                    IconButton(
+                        onClick = onBackClick,
+                        modifier = Modifier.align(Alignment.CenterStart)
+                    ) {
+                        Icon(
+                            Icons.AutoMirrored.Filled.ArrowBack,
+                            contentDescription = "Volver",
+                            tint = colors.onSurface
+                        )
                     }
                     Text(
                         text = "Detalles",
                         style = MaterialTheme.typography.titleLarge.copy(
-                            fontWeight = FontWeight.SemiBold, fontSize = 22.sp, color = colors.onSurface
+                            fontWeight = FontWeight.SemiBold,
+                            fontSize = 22.sp,
+                            color = colors.onSurface
                         ),
                         modifier = Modifier.align(Alignment.Center)
                     )
-                    Row(modifier = Modifier.align(Alignment.CenterEnd), verticalAlignment = Alignment.CenterVertically) {
+                    Row(
+                        modifier = Modifier.align(Alignment.CenterEnd),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
                         IconButton(onClick = onMoreClick) {
-                            Icon(Icons.Default.Share, contentDescription = "Compartir", tint = colors.onSurface)
+                            Icon(
+                                Icons.Default.Share,
+                                contentDescription = "Compartir",
+                                tint = colors.onSurface
+                            )
                         }
                         IconButton(onClick = onMoreClick) {
-                            Icon(Icons.Default.MoreVert, contentDescription = "Más opciones", tint = colors.onSurface)
+                            Icon(
+                                Icons.Default.MoreVert,
+                                contentDescription = "Más opciones",
+                                tint = colors.onSurface
+                            )
                         }
                     }
                 }
             }
         }
     ) { inner ->
-        Box(modifier = Modifier.fillMaxSize().padding(inner)) {
+        Box(modifier = Modifier
+            .fillMaxSize()
+            .padding(inner)) {
 
             LazyColumn(
                 modifier = Modifier.fillMaxSize(),
@@ -209,7 +296,11 @@ fun ProductDetailScreen(
                                 contentScale = ContentScale.Crop
                             )
                         } else {
-                            Text("Imagen del Producto", color = colors.onSurfaceVariant, fontSize = 16.sp)
+                            Text(
+                                "Imagen del Producto",
+                                color = colors.onSurfaceVariant,
+                                fontSize = 16.sp
+                            )
                         }
                     }
                 }
@@ -225,7 +316,8 @@ fun ProductDetailScreen(
                     ) {
                         IconButton(onClick = {
                             liked = !liked
-                            likeCount = if (liked) likeCount + 1 else (likeCount - 1).coerceAtLeast(0)
+                            likeCount =
+                                if (liked) likeCount + 1 else (likeCount - 1).coerceAtLeast(0)
                         }) {
                             Icon(
                                 imageVector = if (liked) Icons.Filled.Favorite else Icons.Outlined.FavoriteBorder,
@@ -234,7 +326,10 @@ fun ProductDetailScreen(
                             )
                         }
                         IconButton(onClick = onOpenComments) {
-                            Icon(Icons.Outlined.ChatBubbleOutline, contentDescription = "Comentarios")
+                            Icon(
+                                Icons.Outlined.ChatBubbleOutline,
+                                contentDescription = "Comentarios"
+                            )
                         }
                         IconButton(onClick = { /* compartir/enviar */ }) {
                             Icon(Icons.AutoMirrored.Outlined.Send, contentDescription = "Enviar")
@@ -287,7 +382,11 @@ fun ProductDetailScreen(
                             Row(verticalAlignment = Alignment.CenterVertically) {
                                 Text(
                                     buildAnnotatedString {
-                                        withStyle(SpanStyle(fontWeight = FontWeight.SemiBold)) { append(c.user) }
+                                        withStyle(SpanStyle(fontWeight = FontWeight.SemiBold)) {
+                                            append(
+                                                c.user
+                                            )
+                                        }
                                         append("  ${c.text}")
                                     },
                                     fontSize = 13.sp
@@ -318,38 +417,79 @@ fun ProductDetailScreen(
                 // Título principal (conservado)
                 item {
                     Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 16.dp)) {
-                        Text(productDetail.title, fontSize = 22.sp, fontWeight = FontWeight.Bold, color = colors.onSurface)
+                        Text(
+                            productDetail.title,
+                            fontSize = 22.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = colors.onSurface
+                        )
                     }
                 }
 
                 // Card vendedor/precios/mascota (conservada)
                 item {
                     Card(
-                        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp),
                         colors = CardDefaults.cardColors(containerColor = colors.surface),
                         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
                         shape = RoundedCornerShape(16.dp)
                     ) {
                         Column(modifier = Modifier.padding(16.dp)) {
-                            Text("Colección René Risco", fontSize = 12.sp, color = colors.onSurfaceVariant)
-                            Text(productDetail.sellerName, fontSize = 16.sp, fontWeight = FontWeight.Bold, color = colors.onSurface)
-                            Text("Cerca: 9.6k • ${productDetail.condition}", fontSize = 12.sp, color = colors.onSurfaceVariant)
+                            Text(
+                                "Colección René Risco",
+                                fontSize = 12.sp,
+                                color = colors.onSurfaceVariant
+                            )
+                            Text(
+                                productDetail.sellerName,
+                                fontSize = 16.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = colors.onSurface
+                            )
+                            Text(
+                                "Cerca: 9.6k • ${productDetail.condition}",
+                                fontSize = 12.sp,
+                                color = colors.onSurfaceVariant
+                            )
                             Spacer(Modifier.height(16.dp))
                             Row(verticalAlignment = Alignment.CenterVertically) {
-                                Text(productDetail.currentPrice, fontSize = 24.sp, fontWeight = FontWeight.Bold, color = colors.onSurface)
+                                Text(
+                                    productDetail.currentPrice,
+                                    fontSize = 24.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = colors.onSurface
+                                )
                                 if (productDetail.isOnSale) {
                                     Spacer(Modifier.width(8.dp))
-                                    Text(productDetail.originalPrice, fontSize = 14.sp, color = colors.onSurfaceVariant, textDecoration = TextDecoration.LineThrough)
+                                    Text(
+                                        productDetail.originalPrice,
+                                        fontSize = 14.sp,
+                                        color = colors.onSurfaceVariant,
+                                        textDecoration = TextDecoration.LineThrough
+                                    )
                                 }
                             }
                             Spacer(Modifier.height(12.dp))
-                            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                            Row(
+                                Modifier.fillMaxWidth(),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
                                 Box(
-                                    modifier = Modifier.size(40.dp).clip(CircleShape).background(colors.primary.copy(alpha = 0.12f)),
+                                    modifier = Modifier
+                                        .size(40.dp)
+                                        .clip(CircleShape)
+                                        .background(colors.primary.copy(alpha = 0.12f)),
                                     contentAlignment = Alignment.Center
                                 ) { Text("🐶", fontSize = 20.sp) }
                                 Spacer(Modifier.width(12.dp))
-                                Text(productDetail.mascotMessage, fontSize = 14.sp, color = colors.primary, modifier = Modifier.weight(1f))
+                                Text(
+                                    productDetail.mascotMessage,
+                                    fontSize = 14.sp,
+                                    color = colors.primary,
+                                    modifier = Modifier.weight(1f)
+                                )
                             }
                         }
                     }
@@ -358,7 +498,9 @@ fun ProductDetailScreen(
                 // Secciones de detalle (conservadas)
                 item {
                     Card(
-                        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 16.dp),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp, vertical = 16.dp),
                         colors = CardDefaults.cardColors(containerColor = colors.surface),
                         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
                         shape = RoundedCornerShape(16.dp)
@@ -370,15 +512,35 @@ fun ProductDetailScreen(
                                 DetailSection("Categoría", Icons.Default.Category),
                                 DetailSection("Estado", Icons.Default.Star),
                                 DetailSection("Color", Icons.Default.Palette),
-                                DetailSection("Guía de Tallas", Icons.Default.Straighten, isExpandable = true),
-                                DetailSection("Materiales", Icons.Default.Texture, isExpandable = true),
-                                DetailSection("Estimación de envío", Icons.Default.LocalShipping, isExpandable = true),
-                                DetailSection("Políticas de Protección", Icons.Default.Security, isExpandable = true)
+                                DetailSection(
+                                    "Guía de Tallas",
+                                    Icons.Default.Straighten,
+                                    isExpandable = true
+                                ),
+                                DetailSection(
+                                    "Materiales",
+                                    Icons.Default.Texture,
+                                    isExpandable = true
+                                ),
+                                DetailSection(
+                                    "Estimación de envío",
+                                    Icons.Default.LocalShipping,
+                                    isExpandable = true
+                                ),
+                                DetailSection(
+                                    "Políticas de Protección",
+                                    Icons.Default.Security,
+                                    isExpandable = true
+                                )
                             )
                             items.forEachIndexed { index, section ->
                                 DetailSectionItem(section = section, productDetail = productDetail)
                                 if (index < items.size - 1) {
-                                    HorizontalDivider(color = colors.outlineVariant, thickness = 1.dp, modifier = Modifier.padding(vertical = 12.dp))
+                                    HorizontalDivider(
+                                        color = colors.outlineVariant,
+                                        thickness = 1.dp,
+                                        modifier = Modifier.padding(vertical = 12.dp)
+                                    )
                                 }
                             }
                         }
@@ -390,16 +552,32 @@ fun ProductDetailScreen(
 
             // Botón Comprar (conservado)
             Surface(
-                modifier = Modifier.align(Alignment.BottomCenter).fillMaxWidth().padding(16.dp),
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .fillMaxWidth()
+                    .padding(16.dp),
                 color = Color.Transparent
             ) {
                 Button(
-                    onClick = onBuyClick,
-                    modifier = Modifier.fillMaxWidth().height(50.dp),
+                    onClick = {
+                        if (product != null) {
+                            showAddToCartDialog = true
+                        }
+                    },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(50.dp),
                     colors = ButtonDefaults.buttonColors(containerColor = colors.primary),
                     shape = RoundedCornerShape(25.dp)
                 ) {
-                    Text("Comprar", color = colors.onPrimary, fontSize = 16.sp, fontWeight = FontWeight.Bold)
+                    Icon(Icons.Default.ShoppingCart, contentDescription = null)
+                    Spacer(Modifier.width(8.dp))
+                    Text(
+                        "Agregar al Carrito",
+                        color = colors.onPrimary,
+                        fontSize = 16.sp,
+                        fontWeight = FontWeight.Bold
+                    )
                 }
             }
         }
@@ -430,22 +608,116 @@ private fun DetailSectionItem(
             .padding(vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Icon(section.icon, contentDescription = null, tint = colors.primary, modifier = Modifier.size(20.dp))
+        Icon(
+            section.icon,
+            contentDescription = null,
+            tint = colors.primary,
+            modifier = Modifier.size(20.dp)
+        )
         Spacer(Modifier.width(16.dp))
         Column(Modifier.weight(1f)) {
-            Text(section.title, fontSize = 14.sp, fontWeight = FontWeight.Medium, color = colors.onSurface)
+            Text(
+                section.title,
+                fontSize = 14.sp,
+                fontWeight = FontWeight.Medium,
+                color = colors.onSurface
+            )
             if (content.isNotEmpty()) {
                 Spacer(Modifier.height(4.dp))
                 Text(content, fontSize = 12.sp, color = colors.onSurfaceVariant)
             }
         }
         if (section.isExpandable) {
-            Icon(Icons.Default.ChevronRight, contentDescription = "Expandir", tint = colors.onSurfaceVariant, modifier = Modifier.size(18.dp))
+            Icon(
+                Icons.Default.ChevronRight,
+                contentDescription = "Expandir",
+                tint = colors.onSurfaceVariant,
+                modifier = Modifier.size(18.dp)
+            )
         }
     }
 }
+
 private fun formatPrice(value: Int): String =
     String.format("%,d", value).replace(',', '.')
+
+// ========== DIÁLOGO DE SELECCIÓN ==========
+@Composable
+private fun AddToCartDialog(
+    product: ProductCardState,
+    selectedSize: String,
+    selectedColor: String,
+    onSizeSelected: (String) -> Unit,
+    onColorSelected: (String) -> Unit,
+    onDismiss: () -> Unit,
+    onConfirm: () -> Unit
+) {
+    val colors = MaterialTheme.colorScheme
+
+    // Tallas disponibles (extraer del producto)
+    val availableSizes = remember {
+        listOf("XS", "S", "M", "L", "XL")
+    }
+
+    // Colores disponibles
+    val availableColors = remember {
+        listOf("Negro", "Blanco", "Azul", "Rojo", "Beige")
+    }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Selecciona opciones") },
+        text = {
+            Column(
+                modifier = Modifier.fillMaxWidth(),
+                verticalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                // Selección de talla
+                Text("Talla *", fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    availableSizes.forEach { size ->
+                        FilterChip(
+                            selected = selectedSize == size,
+                            onClick = { onSizeSelected(size) },
+                            label = { Text(size) }
+                        )
+                    }
+                }
+
+                // Selección de color
+                Text("Color (opcional)", fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    availableColors.take(3).forEach { color ->
+                        FilterChip(
+                            selected = selectedColor == color,
+                            onClick = { onColorSelected(color) },
+                            label = { Text(color) }
+                        )
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            Button(
+                onClick = onConfirm,
+                enabled = selectedSize.isNotBlank()
+            ) {
+                Text("Agregar")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Cancelar")
+            }
+        }
+    )
+}
 
 
 // ────────────────────────────────────────────────────────────────────────────────

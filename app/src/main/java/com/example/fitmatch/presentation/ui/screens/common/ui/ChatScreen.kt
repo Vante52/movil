@@ -8,25 +8,9 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.EmojiEmotions
-import androidx.compose.material.icons.filled.Image
-import androidx.compose.material.icons.filled.LocationOn
-import androidx.compose.material.icons.filled.Mic
-import androidx.compose.material.icons.filled.MoreVert
-import androidx.compose.material.icons.filled.Phone
-import androidx.compose.material.icons.filled.Person
-import androidx.compose.material.icons.filled.Send
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.OutlinedTextFieldDefaults
-import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
+import androidx.compose.material.icons.filled.*
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -34,57 +18,59 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.compose.FitMatchTheme
-import com.example.fitmatch.model.social.Message
-import com.example.fitmatch.presentation.viewmodel.user.ChatListViewModel
-import com.example.fitmatch.presentation.viewmodel.user.ChatUiState
-import com.example.fitmatch.presentation.viewmodel.user.ChatViewModel
 
+// ----------------------------
+// Modelo
+// ----------------------------
+data class ChatMessage(
+    val text: String,
+    val isFromUser: Boolean,
+    val timestamp: String = ""
+)
+
+// ----------------------------
+// Pantalla principal (sin @Preview aquí)
+// ----------------------------
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ChatScreen(
-    chatId: String,
-    vm: ChatListViewModel.ChatViewModel = viewModel(),
-    contactName: String = "",
+    contactName: String = "Helena Hills",
     contactSubtitle: String = "En línea",
     onBackClick: () -> Unit = {},
     onCallClick: () -> Unit = {},
     onMoreClick: () -> Unit = {}
 ) {
-    val state by vm.uiState.collectAsStateWithLifecycle()
-    val headerTitle = contactName.ifBlank { "Chat ${chatId.takeLast(6)}" }
-
-    ChatContent(
-        state = state,
-        headerTitle = headerTitle,
-        contactSubtitle = contactSubtitle,
-        onBackClick = onBackClick,
-        onCallClick = onCallClick,
-        onMoreClick = onMoreClick,
-        onMessageChange = vm::onMessageChange,
-        onSend = vm::sendMessage
-    )
-}
-
-@Composable
-private fun ChatContent(
-    state: ChatUiState,
-    headerTitle: String,
-    contactSubtitle: String,
-    onBackClick: () -> Unit,
-    onCallClick: () -> Unit,
-    onMoreClick: () -> Unit,
-    onMessageChange: (String) -> Unit,
-    onSend: () -> Unit
-) {
     val colors = MaterialTheme.colorScheme
+
+    var messageText by remember { mutableStateOf("") }
+    var messages by remember {
+        mutableStateOf(
+            listOf(
+                ChatMessage(
+                    "Jean Azul Levis Talla S\n Puedes chatear con el vendedor para contactar tu compra.",
+                    false
+                ),
+                ChatMessage("Ah, sí?", false),
+                ChatMessage("Qué chulo", false),
+                ChatMessage("Cómo funciona?", false),
+                ChatMessage(
+                    "Solo tienes que editar cualquier texto para escribir la conversación que quieras mostrar y borrar las burbujas que no quieras utilizar",
+                    true
+                ),
+                ChatMessage("Mmm", false),
+                ChatMessage("Creo que lo entiendo", false),
+                ChatMessage("De todas formas míraré el Centro de ayuda si tengo más preguntas", false)
+            )
+        )
+    }
 
     Column(
         modifier = Modifier
             .fillMaxSize()
             .background(colors.background)
     ) {
+        // ===================== Header UNIFICADO =====================
         Surface(
             modifier = Modifier
                 .fillMaxWidth(),
@@ -97,6 +83,7 @@ private fun ChatContent(
                     .fillMaxWidth()
                     .padding(horizontal = 16.dp, vertical = 14.dp)
             ) {
+                // Back (izquierda)
                 IconButton(
                     onClick = onBackClick,
                     modifier = Modifier.align(Alignment.CenterStart)
@@ -108,12 +95,13 @@ private fun ChatContent(
                     )
                 }
 
+                // Título centrado (nombre + subtítulo)
                 Column(
                     modifier = Modifier.align(Alignment.Center),
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
                     Text(
-                        text = headerTitle,
+                        text = contactName,
                         style = MaterialTheme.typography.titleLarge.copy(
                             fontWeight = FontWeight.SemiBold,
                             fontSize = 22.sp,
@@ -128,20 +116,21 @@ private fun ChatContent(
                     )
                 }
 
+                // Acciones (derecha): llamar + más
                 Row(
                     modifier = Modifier.align(Alignment.CenterEnd),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     IconButton(onClick = onCallClick) {
                         Icon(
-                            imageVector = Icons.Filled.Phone,
+                            imageVector = Icons.Default.Phone,
                             contentDescription = "Llamar",
                             tint = colors.onSurface
                         )
                     }
                     IconButton(onClick = onMoreClick) {
                         Icon(
-                            imageVector = Icons.Filled.MoreVert,
+                            imageVector = Icons.Default.MoreVert,
                             contentDescription = "Más opciones",
                             tint = colors.onSurface
                         )
@@ -149,7 +138,9 @@ private fun ChatContent(
                 }
             }
         }
+        // ============================================================
 
+        // Mensaje/banner superior (informativo)
         Box(
             modifier = Modifier
                 .fillMaxWidth()
@@ -165,6 +156,7 @@ private fun ChatContent(
             )
         }
 
+        // Lista de mensajes
         LazyColumn(
             modifier = Modifier
                 .weight(1f)
@@ -172,14 +164,15 @@ private fun ChatContent(
             verticalArrangement = Arrangement.spacedBy(8.dp),
             contentPadding = PaddingValues(vertical = 16.dp)
         ) {
-            items(state.messages) { message ->
+            items(messages) { message ->
                 MessageBubble(
                     message = message,
-                    isFromUser = message.senderId == state.currentUserId
+                    isFromUser = message.isFromUser
                 )
             }
         }
 
+        // Campo de entrada de mensaje
         Surface(
             modifier = Modifier.fillMaxWidth(),
             color = colors.surface,
@@ -192,8 +185,8 @@ private fun ChatContent(
                 verticalAlignment = Alignment.Bottom
             ) {
                 OutlinedTextField(
-                    value = state.messageText,
-                    onValueChange = onMessageChange,
+                    value = messageText,
+                    onValueChange = { messageText = it },
                     placeholder = { Text("Mensaje...", color = colors.onSurfaceVariant) },
                     modifier = Modifier.weight(1f),
                     colors = OutlinedTextFieldDefaults.colors(
@@ -212,7 +205,7 @@ private fun ChatContent(
 
                 IconButton(onClick = { /* mic */ }) {
                     Icon(
-                        imageVector = Icons.Filled.Mic,
+                        imageVector = Icons.Default.Mic,
                         contentDescription = "Mensaje de voz",
                         tint = colors.primary
                     )
@@ -220,7 +213,7 @@ private fun ChatContent(
 
                 IconButton(onClick = { /* emoji */ }) {
                     Icon(
-                        imageVector = Icons.Filled.EmojiEmotions,
+                        imageVector = Icons.Default.EmojiEmotions,
                         contentDescription = "Emojis",
                         tint = colors.primary
                     )
@@ -228,7 +221,7 @@ private fun ChatContent(
 
                 IconButton(onClick = { /* imagen */ }) {
                     Icon(
-                        imageVector = Icons.Filled.Image,
+                        imageVector = Icons.Default.Image,
                         contentDescription = "Enviar imagen",
                         tint = colors.primary
                     )
@@ -236,20 +229,9 @@ private fun ChatContent(
 
                 IconButton(onClick = { /* ubicación */ }) {
                     Icon(
-                        imageVector = Icons.Filled.LocationOn,
+                        imageVector = Icons.Default.LocationOn,
                         contentDescription = "Enviar ubicación",
                         tint = colors.primary
-                    )
-                }
-
-                IconButton(
-                    enabled = state.messageText.isNotBlank() && !state.isSending,
-                    onClick = onSend
-                ) {
-                    Icon(
-                        imageVector = Icons.Filled.Send,
-                        contentDescription = "Enviar",
-                        tint = if (state.messageText.isNotBlank()) colors.primary else colors.onSurfaceVariant
                     )
                 }
             }
@@ -257,9 +239,12 @@ private fun ChatContent(
     }
 }
 
+// ----------------------------
+// Burbuja de mensaje
+// ----------------------------
 @Composable
 private fun MessageBubble(
-    message: Message,
+    message: ChatMessage,
     isFromUser: Boolean
 ) {
     val colors = MaterialTheme.colorScheme
@@ -269,6 +254,7 @@ private fun MessageBubble(
         horizontalArrangement = if (isFromUser) Arrangement.End else Arrangement.Start
     ) {
         if (!isFromUser) {
+            // Avatar del contacto
             Box(
                 modifier = Modifier
                     .size(32.dp)
@@ -276,7 +262,7 @@ private fun MessageBubble(
                     .background(colors.surfaceVariant)
             ) {
                 Icon(
-                    imageVector = Icons.Filled.Person,
+                    imageVector = Icons.Default.Person,
                     contentDescription = null,
                     modifier = Modifier
                         .fillMaxSize()
@@ -288,6 +274,7 @@ private fun MessageBubble(
             Spacer(modifier = Modifier.width(8.dp))
         }
 
+        // Burbuja del mensaje
         Card(
             modifier = Modifier.widthIn(max = 280.dp),
             colors = CardDefaults.cardColors(
@@ -312,6 +299,7 @@ private fun MessageBubble(
         if (isFromUser) {
             Spacer(modifier = Modifier.width(8.dp))
 
+            // Avatar del usuario
             Box(
                 modifier = Modifier
                     .size(32.dp)
@@ -319,7 +307,7 @@ private fun MessageBubble(
                     .background(colors.primaryContainer)
             ) {
                 Icon(
-                    imageVector = Icons.Filled.Person,
+                    imageVector = Icons.Default.Person,
                     contentDescription = null,
                     modifier = Modifier
                         .fillMaxSize()
@@ -331,28 +319,13 @@ private fun MessageBubble(
     }
 }
 
+
+// Previews con el tema
 @Preview(showBackground = true, name = "Chat – Light (Brand)")
 @Composable
 private fun ChatPreviewLight() {
     FitMatchTheme(darkTheme = false, dynamicColor = false) {
-        ChatContent(
-            state = ChatUiState(
-                chatId = "preview",
-                messages = listOf(
-                    Message(text = "Hola, ¿cómo estás?", senderId = "other"),
-                    Message(text = "Todo bien, gracias", senderId = "me")
-                ),
-                currentUserId = "me",
-                messageText = "Mensaje..."
-            ),
-            headerTitle = "Helena Hills",
-            contactSubtitle = "En línea",
-            onBackClick = {},
-            onCallClick = {},
-            onMoreClick = {},
-            onMessageChange = {},
-            onSend = {}
-        )
+        ChatScreen()
     }
 }
 
@@ -360,6 +333,6 @@ private fun ChatPreviewLight() {
 @Composable
 private fun ChatPreviewDark() {
     FitMatchTheme(darkTheme = true, dynamicColor = false) {
-        ChatPreviewLight()
+        ChatScreen()
     }
 }
