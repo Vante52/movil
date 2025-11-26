@@ -13,6 +13,7 @@ import android.widget.Toast
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -55,7 +56,9 @@ import com.example.compose.FitMatchTheme
 import com.example.fitmatch.presentation.viewmodel.vendedor.CreateProductViewModel
 import java.io.File
 import com.google.accompanist.permissions.PermissionStatus
-import androidx.compose.foundation.BorderStroke
+
+
+
 
 
 enum class MediaType { IMAGE, VIDEO }

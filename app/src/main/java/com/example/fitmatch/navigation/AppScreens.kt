@@ -1,5 +1,7 @@
 package com.example.fitmatch.navigation
 
+import android.net.Uri
+
 sealed class AppScreens (val route: String) {
     object Welcome : AppScreens("welcome")
     object Register : AppScreens("register")
@@ -16,7 +18,13 @@ sealed class AppScreens (val route: String) {
     object Cart : AppScreens("cart")
     object Orders : AppScreens("orders")
     object DeliveryPickup : AppScreens("delivery_pickup")
-    object Chat : AppScreens("chat/{chatId}")
+    object Chat : AppScreens("chat/{chatId}?contactName={contactName}&otherUserId={otherUserId}") {
+        fun withArgs(chatId: String, contactName: String, otherUserId: String?): String {
+            val encodedName = Uri.encode(contactName)
+            val encodedOtherUser = otherUserId ?: ""
+            return "chat/$chatId?contactName=$encodedName&otherUserId=$encodedOtherUser"
+        }
+    }
     object Notifications : AppScreens("notifications")
     object Profile : AppScreens("profile")
     object StoreProfile : AppScreens("store_profile")

@@ -1,5 +1,6 @@
 package com.example.fitmatch
 
+import android.content.Intent
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -14,20 +15,45 @@ import com.example.fitmatch.config.CloudinaryConfig
 import com.example.fitmatch.config.FirebaseDatabaseConfig
 
 class MainActivity : ComponentActivity() {
+
+    private var pendingChatId: String? = null
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
         FirebaseDatabaseConfig.initialize()
         CloudinaryConfig.initialize(this)
         enableEdgeToEdge()
+
+        // Leer chatId si la app se abrió desde una notificación
+        pendingChatId = intent?.getStringExtra("chatId")
+
         setContent {
             FitMatchTheme {
                 Surface(
-                    modifier = Modifier.Companion.fillMaxSize(),
+                    modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background
                 ) {
-                    MainNavigation()
+                    // Pasamos el chatId a la navegación
+                    MainNavigation(
+                        startChatId = pendingChatId
+                    )
                 }
             }
         }
     }
+
+    // Si la app YA estaba abierta y llega una notificación
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+
+        setIntent(intent)
+
+        val chatId = intent.getStringExtra("chatId")
+        if (chatId != null) {
+            pendingChatId = chatId
+        }
+    }
+
+
 }

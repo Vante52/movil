@@ -24,14 +24,6 @@ interface AuthRepository {
 
     suspend fun getUserProfile(userId: String): Result<User?>
 
-    //Actualizar ubicación
-    suspend fun updateUserLocation(
-        userId: String,
-        latitude: Double,
-        longitude: Double,
-        address: String? = null
-    ): Result<Unit>
-
     fun signOut()
     fun currentUser(): FirebaseUser?
 }

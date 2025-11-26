@@ -9,6 +9,7 @@ import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.ShoppingCart
 import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -52,8 +53,17 @@ import com.example.fitmatch.presentation.ui.screens.vendedor.CreateProductScreen
 // Si tienes pantallas de vendedor, impórtalas y úsalas en el if(role=="Vendedor")
 
 @Composable
-fun MainNavigation() {
+fun MainNavigation(startChatId: String? = null ) {
     val navController = rememberNavController()
+    // Si venimos desde una notificación y aún no navegamos al chat
+    if (startChatId != null) {
+        LaunchedEffect(startChatId) {
+            navController.navigate(AppScreens.Chat.withArgs(startChatId, "", "")) {
+                launchSingleTop = true
+            }
+        }
+    }
+
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry?.destination?.route
     val currentRole = navBackStackEntry?.arguments?.getString("role")
@@ -330,8 +340,25 @@ fun MainNavigation() {
 
 
             // Chat genérico (si tienes una pantalla sin id)
-            composable(AppScreens.Chat.route) {
+            composable(
+                AppScreens.Chat.route,
+                arguments = listOf(
+                    navArgument("chatId") { type = NavType.StringType },
+                    navArgument("contactName") {
+                        type = NavType.StringType
+                        defaultValue = ""
+                    },
+                    navArgument("otherUserId") {
+                        type = NavType.StringType
+                        defaultValue = ""
+                    }
+                )
+            ) { backStackEntry ->
+                val chatId = backStackEntry.arguments?.getString("chatId") ?: return@composable
+                val contactName = backStackEntry.arguments?.getString("contactName").orEmpty()
                 ChatScreen(
+                    chatId = chatId,
+                    contactName = contactName,
                     onBackClick = { navController.popBackStack() },
                     onMoreClick = {},
                     onCallClick = {}
@@ -341,11 +368,13 @@ fun MainNavigation() {
             // Chat list -> abre chat por id o Tito
             composable(AppScreens.ChatList.route) {
                 ChatListScreen(
-                    onOpenChat = { chatId, isTito ->
+                    onOpenChat = { chatId, isTito, contactName, otherUserId ->
                         if (isTito) {
                             navController.navigate(AppScreens.TitoChat.route)
                         } else {
-                            navController.navigate("chat/$chatId")
+                            navController.navigate(
+                                AppScreens.Chat.withArgs(chatId, contactName, otherUserId)
+                            )
                         }
                     },
                     onBackClick = { navController.popBackStack() },

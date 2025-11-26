@@ -3,8 +3,6 @@ package com.example.fitmatch.presentation.ui.screens.common.viewmodel
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.example.fitmatch.data.auth.AuthRepository
-import com.example.fitmatch.data.auth.FirebaseAuthRepository
 import com.example.fitmatch.presentation.ui.screens.common.state.*
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -19,8 +17,7 @@ import com.example.fitmatch.presentation.utils.RouteSimulator
 import kotlinx.coroutines.Job
 
 class DeliveryPickupViewModel(
-    private val savedStateHandle: SavedStateHandle,
-    private val authRepository: AuthRepository = FirebaseAuthRepository()
+    private val savedStateHandle: SavedStateHandle
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(DeliveryPickupUiState())
@@ -33,118 +30,8 @@ class DeliveryPickupViewModel(
 
     init {
         val orderId = savedStateHandle.get<String>("orderId") ?: "MIX-24816"
-        loadOrderDetailsWithRealLocations(orderId)
+        loadOrderDetails(orderId)
         startRealtimeTracking()
-    }
-
-    /**
-    Carga orden con ubicaciones reales del vendedor y cliente
-     */
-    private fun loadOrderDetailsWithRealLocations(orderId: String) {
-        viewModelScope.launch {
-            _uiState.update { it.copy(isLoading = true) }
-
-            try {
-                // TODO: Obtener orden real de Firestore/RealtimeDB
-                // Por ahora usamos mock con IDs reales
-                val vendorId = "VENDOR_USER_ID" // ⬅️ Obtener del pedido
-                val clientId = authRepository.currentUser()?.uid ?: run {
-                    _uiState.update {
-                        it.copy(
-                            isLoading = false,
-                            errorMessage = "Usuario no autenticado"
-                        )
-                    }
-                    return@launch
-                }
-
-                // Obtener ubicación del vendedor desde Firestore
-                val vendorResult = authRepository.getUserProfile(vendorId)
-                val vendorLocation: GeoPoint? = vendorResult.getOrNull()?.let { vendor ->
-                    if (vendor.latitude != null && vendor.longitude != null) {
-                        GeoPoint(vendor.latitude, vendor.longitude)
-                    } else null
-                }
-
-                // Obtener ubicación del cliente desde Firestore
-                val clientResult = authRepository.getUserProfile(clientId)
-                val clientLocation: GeoPoint? = clientResult.getOrNull()?.let { client ->
-                    if (client.latitude != null && client.longitude != null) {
-                        GeoPoint(client.latitude, client.longitude)
-                    } else null
-                }
-
-                // Validar que ambas ubicaciones existan
-                if (vendorLocation == null) {
-                    _uiState.update {
-                        it.copy(
-                            isLoading = false,
-                            errorMessage = "El vendedor no tiene ubicación registrada"
-                        )
-                    }
-                    return@launch
-                }
-
-                if (clientLocation == null) {
-                    _uiState.update {
-                        it.copy(
-                            isLoading = false,
-                            errorMessage = "Tu ubicación no está disponible. Ve a Perfil → Actualizar ubicación"
-                        )
-                    }
-                    return@launch
-                }
-
-                // Crear orden mock
-                val mockOrder = OrderDeliveryInfo(
-                    orderId = orderId,
-                    orderNumber = "#MIX-24816",
-                    customerName = "Tú", // Nombre del cliente actual
-                    customerInitials = "TÚ",
-                    customerNote = "Entregar en recepción del edificio",
-                    createdDaysAgo = 1
-                )
-
-                // Crear pasos del viaje con ubicaciones reales
-                val mockSteps = listOf(
-                    TripStep(
-                        stepNumber = 1,
-                        title = "Recogida en tienda",
-                        address = vendorResult.getOrNull()?.address ?: "Ubicación del vendedor",
-                        timeWindow = "2:00 – 3:00 p. m.",
-                        isActive = true,
-                        latitude = vendorLocation.latitude,
-                        longitude = vendorLocation.longitude
-                    ),
-                    TripStep(
-                        stepNumber = 2,
-                        title = "Entrega al cliente",
-                        address = clientResult.getOrNull()?.address ?: "Tu ubicación",
-                        timeWindow = "3:30 – 4:00 p. m.",
-                        isActive = false,
-                        latitude = clientLocation.latitude,
-                        longitude = clientLocation.longitude
-                    )
-                )
-
-                _uiState.update {
-                    it.copy(
-                        isLoading = false,
-                        order = mockOrder,
-                        tripSteps = mockSteps,
-                        estimatedTime = "12 min"
-                    )
-                }
-
-            } catch (e: Exception) {
-                _uiState.update {
-                    it.copy(
-                        isLoading = false,
-                        errorMessage = "Error al cargar ubicaciones: ${e.message}"
-                    )
-                }
-            }
-        }
     }
 
     fun onMarkStepComplete() {
