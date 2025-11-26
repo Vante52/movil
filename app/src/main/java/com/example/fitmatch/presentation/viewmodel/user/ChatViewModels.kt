@@ -102,24 +102,49 @@ class ChatListViewModel(
                     it.copy(
                         isLoading = false,
                         error = null,
-                        chats = rows
+                        chats = chats.map { chat ->
+                            val otherParticipant = chat.participantIds.firstOrNull { id -> id != userId }
+                            ChatRowState(
+                                id = chat.id,
+                                title = otherParticipant?.takeIf { it.isNotBlank() } ?: "Chat",
+                                subtitle = chat.lastMessage.ifBlank { "Empieza la conversación" },
+                                time = formatTimestamp(chat.lastMessageAt),
+                                unread = chat.unreadCount[userId] ?: 0,
+                                isTito = chat.isTito,
+                                otherUserId = otherParticipant
+                            )
+                        }
                     )
                 }
+            } catch (e: Exception) {
+                _uiState.update { it.copy(isSearchingUsers = false, userSearchError = e.message ?: "Error al cargar usuarios") }
             }
         }
     }
 
-    private suspend fun loadUserName(userId: String?): String {
-        if (userId.isNullOrBlank()) return "Chat"
-        userNameCache[userId]?.let { return it }
+    fun openChatWithUser(userId: String, onChatReady: (String) -> Unit) {
+        val currentUserId = auth.currentUser?.uid
+        if (currentUserId == null) {
+            _uiState.update { it.copy(error = "Debes iniciar sesión para iniciar un chat") }
+            return
+        }
 
-        val user = userRepo.getUserById(userId)
-        val resolvedName = user?.fullName?.takeIf { it.isNotBlank() }
-            ?: user?.email
-            ?: "Chat"
-
-        userNameCache[userId] = resolvedName
-        return resolvedName
+        viewModelScope.launch(dispatcher) {
+            try {
+                _uiState.update { it.copy(isStartingChat = true, error = null) }
+                val existingChat = _uiState.value.chats.firstOrNull { it.otherUserId == userId }
+                val chatId = existingChat?.id ?: realtimeRepo.createChat(
+                    Chat(
+                        participantIds = listOf(currentUserId, userId)
+                    )
+                )
+                onChatReady(chatId)
+            } catch (e: Exception) {
+                _uiState.update { it.copy(error = e.message ?: "No se pudo iniciar el chat") }
+            } finally {
+                _uiState.update { it.copy(isStartingChat = false) }
+            }
+        }
     }
 
     fun searchUsers(query: String) {
