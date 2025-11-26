@@ -5,7 +5,10 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.fitmatch.data.realtimedb.FirebaseRealtimeDatabaseRepository
 import com.example.fitmatch.data.realtimedb.RealtimeDatabaseRepository
+import com.example.fitmatch.data.user.FirebaseUserRepository
+import com.example.fitmatch.data.user.UserRepository
 import com.example.fitmatch.model.social.Message
+import com.example.fitmatch.model.social.Chat
 import com.google.firebase.auth.FirebaseAuth
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -31,17 +34,29 @@ data class ChatRowState(
     val subtitle: String,
     val time: String,
     val unread: Int,
-    val isTito: Boolean
+    val isTito: Boolean,
+    val otherUserId: String? = null
+)
+
+data class ChatUserRow(
+    val id: String,
+    val name: String,
+    val email: String
 )
 
 data class ChatListUiState(
     val chats: List<ChatRowState> = emptyList(),
     val isLoading: Boolean = true,
-    val error: String? = null
+    val error: String? = null,
+    val userResults: List<ChatUserRow> = emptyList(),
+    val isSearchingUsers: Boolean = false,
+    val userSearchError: String? = null,
+    val isStartingChat: Boolean = false
 )
 
 class ChatListViewModel(
     private val realtimeRepo: RealtimeDatabaseRepository = FirebaseRealtimeDatabaseRepository(),
+    private val userRepo: UserRepository = FirebaseUserRepository(),
     private val auth: FirebaseAuth = FirebaseAuth.getInstance(),
     private val dispatcher: CoroutineDispatcher = Dispatchers.IO
 ) : ViewModel() {
@@ -74,11 +89,97 @@ class ChatListViewModel(
                                 subtitle = chat.lastMessage.ifBlank { "Empieza la conversación" },
                                 time = formatTimestamp(chat.lastMessageAt),
                                 unread = chat.unreadCount[userId] ?: 0,
-                                isTito = chat.isTito
+                                isTito = chat.isTito,
+                                otherUserId = otherParticipant
                             )
                         }
                     )
                 }
+            }
+        }
+    }
+
+    fun searchUsers(query: String) {
+        val currentUserId = auth.currentUser?.uid
+
+        if (query.isBlank()) {
+            _uiState.update {
+                it.copy(
+                    userResults = emptyList(),
+                    isSearchingUsers = false,
+                    userSearchError = null
+                )
+            }
+            return
+        }
+
+        viewModelScope.launch(dispatcher) {
+            _uiState.update { it.copy(isSearchingUsers = true, userSearchError = null) }
+            try {
+                val users = userRepo.searchUsers(query, excludeUserId = currentUserId)
+                _uiState.update {
+                    it.copy(
+                        isSearchingUsers = false,
+                        userResults = users.map { user ->
+                            ChatUserRow(
+                                id = user.id,
+                                name = user.fullName.ifBlank { user.email },
+                                email = user.email
+                            )
+                        }
+                    )
+                }
+            } catch (e: Exception) {
+                _uiState.update { it.copy(isSearchingUsers = false, userSearchError = e.message ?: "Error al buscar usuarios") }
+            }
+        }
+    }
+
+    fun loadAllUsers() {
+        val currentUserId = auth.currentUser?.uid
+        viewModelScope.launch(dispatcher) {
+            _uiState.update { it.copy(isSearchingUsers = true, userSearchError = null) }
+            try {
+                val users = userRepo.getAllUsers(excludeUserId = currentUserId)
+                _uiState.update {
+                    it.copy(
+                        isSearchingUsers = false,
+                        userResults = users.map { user ->
+                            ChatUserRow(
+                                id = user.id,
+                                name = user.fullName.ifBlank { user.email },
+                                email = user.email
+                            )
+                        }
+                    )
+                }
+            } catch (e: Exception) {
+                _uiState.update { it.copy(isSearchingUsers = false, userSearchError = e.message ?: "Error al cargar usuarios") }
+            }
+        }
+    }
+
+    fun openChatWithUser(userId: String, onChatReady: (String) -> Unit) {
+        val currentUserId = auth.currentUser?.uid
+        if (currentUserId == null) {
+            _uiState.update { it.copy(error = "Debes iniciar sesión para iniciar un chat") }
+            return
+        }
+
+        viewModelScope.launch(dispatcher) {
+            try {
+                _uiState.update { it.copy(isStartingChat = true, error = null) }
+                val existingChat = _uiState.value.chats.firstOrNull { it.otherUserId == userId }
+                val chatId = existingChat?.id ?: realtimeRepo.createChat(
+                    Chat(
+                        participantIds = listOf(currentUserId, userId)
+                    )
+                )
+                onChatReady(chatId)
+            } catch (e: Exception) {
+                _uiState.update { it.copy(error = e.message ?: "No se pudo iniciar el chat") }
+            } finally {
+                _uiState.update { it.copy(isStartingChat = false) }
             }
         }
     }
