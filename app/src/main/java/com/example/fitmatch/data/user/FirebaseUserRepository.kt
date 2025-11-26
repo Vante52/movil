@@ -28,15 +28,4 @@ class FirebaseUserRepository(
     override suspend fun getAllUsers(excludeUserId: String?): List<User> {
         return searchUsers(query = "", excludeUserId = excludeUserId)
     }
-
-    override suspend fun getUserById(id: String): User? {
-        if (id.isBlank()) return null
-
-        val snapshot = firestore.collection("users")
-            .document(id)
-            .get()
-            .await()
-
-        return snapshot.toObject(User::class.java)
-    }
 }
