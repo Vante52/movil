@@ -37,123 +37,79 @@ class UserSearchPage extends HookWidget {
   Widget build(BuildContext context) {
     final controller = useTextEditingController();
     final query = useState('');
-    final currentUserId = fb_auth.FirebaseAuth.instance.currentUser?.uid;
-    final searchService = useMemoized(
-      () => UserSearchService(FirebaseFirestore.instance),
-      const [],
-    );
 
     useEffect(() {
-      void listener() => query.value = controller.text.trim();
-      controller.addListener(listener);
-      return () => controller.removeListener(listener);
+      controller.addListener(() => query.value = controller.text.trim());
+      return null;
     }, const []);
 
     final searchStream = useMemoized(
-      () => searchService.watchUsersByName(query.value),
+      () => UserSearchService(FirebaseFirestore.instance)
+          .watchUsersByName(query.value),
       [query.value],
     );
 
     return Scaffold(
       appBar: AppBar(title: const Text('Busca usuarios para chatear')),
-      body: GestureDetector(
-        onTap: () => FocusScope.of(context).unfocus(),
-        child: Column(
-          children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  TextField(
-                    controller: controller,
-                    decoration: const InputDecoration(
-                      labelText: 'Nombre del usuario',
-                      prefixIcon: Icon(Icons.search),
-                      border: OutlineInputBorder(),
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  const Text(
-                    'Empieza a escribir y verás sugerencias en tiempo real.',
-                    style: TextStyle(color: Colors.black54),
-                  ),
-                ],
+      body: Column(
+        children: [
+          Padding(
+            padding: const EdgeInsets.all(16),
+            child: TextField(
+              controller: controller,
+              decoration: const InputDecoration(
+                labelText: 'Nombre del usuario',
+                prefixIcon: Icon(Icons.search),
               ),
             ),
-            Expanded(
-              child: StreamBuilder<List<AppUser>>(
-                stream: searchStream,
-                builder: (context, snapshot) {
-                  final users = (snapshot.data ?? [])
-                      .where((user) => user.id != currentUserId)
-                      .toList();
-
-                  if (snapshot.connectionState == ConnectionState.waiting &&
-                      users.isEmpty) {
-                    return const Center(child: CircularProgressIndicator());
-                  }
-
-                  if (users.isEmpty) {
-                    return const Center(
-                      child: Text(
-                        'Sin resultados todavía. Prueba con un nombre o elige a alguien de la lista reciente.',
-                        textAlign: TextAlign.center,
-                      ),
-                    );
-                  }
-
-                  return ListView.builder(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                    itemCount: users.length,
-                    itemBuilder: (context, index) {
-                      final user = users[index];
-                      return Card(
-                        margin: const EdgeInsets.symmetric(vertical: 6),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: ListTile(
-                          leading: CircleAvatar(
-                            child: Text(user.displayName.isNotEmpty
-                                ? user.displayName.characters.first.toUpperCase()
-                                : '?'),
+          ),
+          Expanded(
+            child: StreamBuilder<List<AppUser>>(
+              stream: searchStream,
+              builder: (context, snapshot) {
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return const Center(child: CircularProgressIndicator());
+                }
+                final users = snapshot.data ?? [];
+                if (users.isEmpty) {
+                  return const Center(child: Text('No hay usuarios con ese nombre'));
+                }
+                return ListView.separated(
+                  itemCount: users.length,
+                  separatorBuilder: (_, __) => const Divider(height: 1),
+                  itemBuilder: (context, index) {
+                    final user = users[index];
+                    return ListTile(
+                      title: Text(user.displayName),
+                      subtitle: Text(user.email ?? ''),
+                      onTap: () async {
+                        final currentUser = fb_auth.FirebaseAuth.instance.currentUser;
+                        if (currentUser == null) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(content: Text('Debes iniciar sesión para chatear')),
+                          );
+                          return;
+                        }
+                        final chatId = await ChatService(FirebaseFirestore.instance)
+                            .findOrCreateChat(currentUser.uid, user.id);
+                        if (!context.mounted) return;
+                        Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (_) => ChatPage(
+                              chatId: chatId,
+                              otherUser: user,
+                              currentUserId: currentUser.uid,
+                            ),
                           ),
-                          title: Text(user.displayName),
-                          subtitle: Text(user.email ?? 'Tap para iniciar conversación'),
-                          trailing: const Icon(Icons.chevron_right),
-                          onTap: () async {
-                            final currentUser = fb_auth.FirebaseAuth.instance.currentUser;
-                            if (currentUser == null) {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(
-                                  content: Text('Debes iniciar sesión para chatear'),
-                                ),
-                              );
-                              return;
-                            }
-                            final chatId = await ChatService(FirebaseFirestore.instance)
-                                .findOrCreateChat(currentUser.uid, user.id);
-                            if (!context.mounted) return;
-                            Navigator.of(context).push(
-                              MaterialPageRoute(
-                                builder: (_) => ChatPage(
-                                  chatId: chatId,
-                                  otherUser: user,
-                                  currentUserId: currentUser.uid,
-                                ),
-                              ),
-                            );
-                          },
-                        ),
-                      );
-                    },
-                  );
-                },
-              ),
+                        );
+                      },
+                    );
+                  },
+                );
+              },
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
