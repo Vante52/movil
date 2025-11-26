@@ -38,7 +38,15 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
-
+        <activity
+            android:name=".presentation.ui.screens.wear.WearDashboardActivity"
+            android:exported="true"
+            android:theme="@style/Theme.FitMatch">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
         <!-- Facebook App ID -->
         <meta-data
             android:name="com.facebook.sdk.ApplicationId"
