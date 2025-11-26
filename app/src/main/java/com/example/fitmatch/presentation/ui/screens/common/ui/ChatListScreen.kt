@@ -245,7 +245,8 @@ fun ChatListScreen(
                                             isLoading = uiState.isStartingChat,
                                             onClick = {
                                                 vm.openChatWithUser(user.id) { chatId ->
-                                                    onOpenChat(chatId, false)
+                                                    // FIX: Provide all four arguments to onOpenChat
+                                                    onOpenChat(chatId, false, user.name, user.id)
                                                 }
                                             }
                                         )

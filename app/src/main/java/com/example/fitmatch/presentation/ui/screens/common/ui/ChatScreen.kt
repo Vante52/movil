@@ -38,13 +38,14 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.compose.FitMatchTheme
 import com.example.fitmatch.model.social.Message
+import com.example.fitmatch.presentation.viewmodel.user.ChatListViewModel
 import com.example.fitmatch.presentation.viewmodel.user.ChatUiState
 import com.example.fitmatch.presentation.viewmodel.user.ChatViewModel
 
 @Composable
 fun ChatScreen(
     chatId: String,
-    vm: ChatViewModel = viewModel(),
+    vm: ChatListViewModel.ChatViewModel = viewModel(),
     contactName: String = "",
     contactSubtitle: String = "En línea",
     onBackClick: () -> Unit = {},

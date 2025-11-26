@@ -74,7 +74,10 @@ class ChatListViewModel(
     private fun observeChats() {
         val userId = auth.currentUser?.uid
         if (userId == null) {
-            _uiState.value = ChatListUiState(isLoading = false, error = "Debes iniciar sesión para ver tus chats")
+            _uiState.value = ChatListUiState(
+                isLoading = false,
+                error = "Debes iniciar sesión para ver tus chats"
+            )
             return
         }
 
@@ -207,32 +210,6 @@ class ChatListViewModel(
             }
         }
     }
-
-    fun openChatWithUser(userId: String, onChatReady: (String) -> Unit) {
-        val currentUserId = auth.currentUser?.uid
-        if (currentUserId == null) {
-            _uiState.update { it.copy(error = "Debes iniciar sesión para iniciar un chat") }
-            return
-        }
-
-        viewModelScope.launch(dispatcher) {
-            try {
-                _uiState.update { it.copy(isStartingChat = true, error = null) }
-                val existingChat = _uiState.value.chats.firstOrNull { it.otherUserId == userId }
-                val chatId = existingChat?.id ?: realtimeRepo.createChat(
-                    Chat(
-                        participantIds = listOf(currentUserId, userId)
-                    )
-                )
-                onChatReady(chatId)
-            } catch (e: Exception) {
-                _uiState.update { it.copy(error = e.message ?: "No se pudo iniciar el chat") }
-            } finally {
-                _uiState.update { it.copy(isStartingChat = false) }
-            }
-        }
-    }
-}
 
 // --------- Chat individual ---------
 data class ChatUiState(
