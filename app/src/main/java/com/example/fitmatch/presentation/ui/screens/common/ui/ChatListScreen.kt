@@ -166,7 +166,7 @@ fun ChatListScreen(
 
                 uiState.error != null -> {
                     Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                        Text(uiState.error, color = colors.error)
+                        Text(uiState.error!!, color = colors.error)
                     }
                 }
 
